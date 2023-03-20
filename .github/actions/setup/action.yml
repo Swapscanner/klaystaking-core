@@ -1,0 +1,17 @@
+name: Setup
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v3
+      with:
+        node-version: 18
+    - uses: actions/cache@v3
+      id: cache
+      with:
+        path: '**/node_modules'
+        key: yarn-v3-${{ hashFiles('**/yarn.lock') }}
+    - name: Install dependencies
+      run: yarn --frozen-lockfile
+      shell: bash
+      if: steps.cache.outputs.cache-hit != 'true'
