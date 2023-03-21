@@ -376,9 +376,13 @@ describe('CNStakedKLAY', () => {
 
     describe('#stakeFor()', () => {
       it('should be able to stake for other account', async () => {
-        await cnStakedKLAY.for.bob.stakeFor(accounts.alice.address, { value: ETHER });
-        await expectBalanceOf(accounts.alice).to.equal(ETHER);
-        await expectBalanceOf(accounts.bob).to.equal(0n);
+        await expect(
+          cnStakedKLAY.for.bob.stakeFor(accounts.alice.address, { value: ETHER }),
+        ).to.changeTokenBalances(
+          cnStakedKLAY,
+          [accounts.alice.address, accounts.bob.address],
+          [ETHER, 0n],
+        );
       });
     });
 
@@ -583,11 +587,20 @@ describe('CNStakedKLAY', () => {
           await expectBalanceOf(accounts.alice).to.equal(0n);
         });
 
-        it('should not be able to unstake all if balance is 0', async () => {
+        it('should not be able to unstake all if balance is zero', async () => {
           await expect(cnStakedKLAY.for.bob.unstakeAll()).to.be.revertedWithCustomError(
             cnStakedKLAY,
             'AmountTooSmall',
           );
+        });
+
+        it('should sweep rewards', async () => {
+          await issueReward(ETHER);
+
+          await cnStakedKLAY.for.alice.unstakeAll();
+
+          await expectEtherBalanceOf(cnStakedKLAY).to.equal(0n);
+          await expectBalanceOf(accounts.alice).to.equal(0n);
         });
       });
 
