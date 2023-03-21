@@ -831,7 +831,7 @@ describe('CNStakedKLAY', () => {
     });
   });
 
-  describe('#setPeriodicStakingStatsDebounceInterval', () => {
+  describe('#setPeriodicStakingStatsDebounceInterval()', () => {
     it('should revert when called by non-owner', async () => {
       await expect(cnStakedKLAY.connect(accounts.bob).setPeriodicStakingStatsDebounceInterval(0)).to
         .be.reverted;
