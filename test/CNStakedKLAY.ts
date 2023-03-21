@@ -374,6 +374,14 @@ describe('CNStakedKLAY', () => {
       });
     });
 
+    describe('#stakeFor()', () => {
+      it('should be able to stake for other account', async () => {
+        await cnStakedKLAY.for.bob.stakeFor(accounts.alice.address, { value: ETHER });
+        await expectBalanceOf(accounts.alice).to.equal(ETHER);
+        await expectBalanceOf(accounts.bob).to.equal(0n);
+      });
+    });
+
     describe('when alice staked', () => {
       useSnapshot(async () => {
         await cnStakedKLAY.for.alice.stake({ value: ETHER });
@@ -565,6 +573,21 @@ describe('CNStakedKLAY', () => {
           // check if claim check is burned
           expect(await claimCheck.balanceOf(accounts.alice.address)).to.equal(0n);
           expect(await claimCheck.totalSupply()).to.equal(0n);
+        });
+      });
+
+      describe('#unstakeAll()', () => {
+        it('should unstake all balances', async () => {
+          await cnStakedKLAY.for.alice.unstakeAll();
+
+          await expectBalanceOf(accounts.alice).to.equal(0n);
+        });
+
+        it('should not be able to unstake all if balance is 0', async () => {
+          await expect(cnStakedKLAY.for.bob.unstakeAll()).to.be.revertedWithCustomError(
+            cnStakedKLAY,
+            'AmountTooSmall',
+          );
         });
       });
 
@@ -805,6 +828,19 @@ describe('CNStakedKLAY', () => {
       await expect(cnStakedKLAY.for.alice.stake({ value: ETHER }))
         .to.emit(cnStakedKLAY, 'PeriodicStakingStats')
         .withArgs(2n * ETHER, 2n * ETHER);
+    });
+  });
+
+  describe('#setPeriodicStakingStatsDebounceInterval', () => {
+    it('should revert when called by non-owner', async () => {
+      await expect(cnStakedKLAY.connect(accounts.bob).setPeriodicStakingStatsDebounceInterval(0)).to
+        .be.reverted;
+    });
+
+    it('should be able to set the interval', async () => {
+      await cnStakedKLAY.for.deployer.setPeriodicStakingStatsDebounceInterval(60);
+
+      expect(await cnStakedKLAY.periodicStakingStatsDebounceInterval()).to.equal(60);
     });
   });
 });
