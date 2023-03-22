@@ -74,7 +74,7 @@ contract ProxyStakedKLAYClaimCheck is ERC721Enumerable, Ownable {
     string memory expiresAtString = _timestampToUTCDate(withdrawableFrom + stakeLockup);
 
     bytes memory svg = abi.encodePacked(
-      ProxyStakedKLAYClaimCheckSVGUtils.HEAD(),
+      ProxyStakedKLAYClaimCheckSVGUtils.head(),
       _svgTitle,
       '</text><text x="20" y="98">KLAY #',
       tokenIdString,
