@@ -13,6 +13,7 @@ import {
   AccountsConnectedContract,
   deployAccountsConnectedContract,
 } from './utils/accountsConnectedContract';
+import { createClaimCheck } from './utils/claimCheck';
 
 type AccountName = 'deployer' | 'alice' | 'bob' | 'carol' | 'foundationAdmin' | 'cnAdmin' | 'feeTo';
 type StateAssertion = (account: string | { address: string }) => Chai.PromisedAssertion;
@@ -516,16 +517,6 @@ describe('CNStakedKLAY', () => {
 
           const { withdrawableFrom } = await cnStaking.getApprovedStakingWithdrawalInfo('0');
 
-          const withdrawableFromDate = new Date(+withdrawableFrom.toString() * 1000)
-            .toISOString()
-            .replace(/\.[0-9]+Z$/, '')
-            .replace(/T/, ' ');
-
-          const expiresAtDate = new Date(+withdrawableFrom.toString() * 1000 + 86400 * 1000 * 7)
-            .toISOString()
-            .replace(/\.[0-9]+Z$/, '')
-            .replace(/T/, ' ');
-
           const amountString = '1.000000000000000000';
 
           log(Buffer.from((await claimCheck.tokenURI('0')).slice(28), 'base64').toString());
@@ -536,43 +527,22 @@ describe('CNStakedKLAY', () => {
 
           actual.image = Buffer.from(actual.image.slice(26), 'base64').toString();
 
-          expect(actual).to.deep.equal({
-            name: 'Unstaking CNStakedKLAY #0',
-            description:
-              `Claim check for ${amountString} KLAY. Can be claimed after ${withdrawableFromDate} ` +
-              `UTC and expires at ${expiresAtDate} UTC. Claiming after expiry will ` +
-              `re-stake the tokens back to the owner. Pending: cannot be claimed yet.`,
-            image:
-              `<svg xmlns="http://www.w3.org/2000/svg" ` +
-              `preserveAspectRatio="xMinYMin meet" viewBox="0 0 350 350"><style>.base{` +
-              `fill:white;font-family:serif;font-size:14px;}</style>` +
-              `<rect width="100%" height="100%" fill="black"/>` +
-              `<text x="10" y="20" class="base">Unstaking CNStakedKLAY #0</text>` +
-              `<text x="10" y="60" class="base">Amount: ${amountString} KLAY</text>` +
-              `<text x="10" y="80" class="base">Withdrawable from: ${withdrawableFromDate} UTC </text>` +
-              `<text x="10" y="100" class="base">Expires at: ${expiresAtDate} UTC</text>` +
-              `<text x="10" y="140" class="base">State: Pending: cannot be claimed yet.</text>` +
-              `</svg>`,
+          const expected = createClaimCheck({
+            tokenId: '0',
+            withdrawableFrom,
+            amountString,
+            status: 'pending',
           });
+
+          expect(actual).to.deep.equal(expected);
         });
 
-        it('should be issue valid claim check with correct amount string', async () => {
+        it('should issue pending claim check with correct amount string', async () => {
           await cnStakedKLAY.for.alice.stake({ value: 2000n * ETHER });
 
           await cnStakedKLAY.for.alice.unstake(1234n * ETHER + 123n);
 
           const { withdrawableFrom } = await cnStaking.getApprovedStakingWithdrawalInfo('0');
-
-          const withdrawableFromDate = new Date(+withdrawableFrom.toString() * 1000)
-            .toISOString()
-            .replace(/\.[0-9]+Z$/, '')
-            .replace(/T/, ' ');
-
-          const expiresAtDate = new Date(+withdrawableFrom.toString() * 1000 + 86400 * 1000 * 7)
-            .toISOString()
-            .replace(/\.[0-9]+Z$/, '')
-            .replace(/T/, ' ');
-
           const amountString = '1,234.000000000000000123';
 
           const actual = JSON.parse(
@@ -581,24 +551,14 @@ describe('CNStakedKLAY', () => {
 
           actual.image = Buffer.from(actual.image.slice(26), 'base64').toString();
 
-          expect(actual).to.deep.equal({
-            name: 'Unstaking CNStakedKLAY #0',
-            description:
-              `Claim check for ${amountString} KLAY. Can be claimed after ${withdrawableFromDate} ` +
-              `UTC and expires at ${expiresAtDate} UTC. Claiming after expiry will ` +
-              `re-stake the tokens back to the owner. Pending: cannot be claimed yet.`,
-            image:
-              `<svg xmlns="http://www.w3.org/2000/svg" ` +
-              `preserveAspectRatio="xMinYMin meet" viewBox="0 0 350 350"><style>.base{` +
-              `fill:white;font-family:serif;font-size:14px;}</style>` +
-              `<rect width="100%" height="100%" fill="black"/>` +
-              `<text x="10" y="20" class="base">Unstaking CNStakedKLAY #0</text>` +
-              `<text x="10" y="60" class="base">Amount: ${amountString} KLAY</text>` +
-              `<text x="10" y="80" class="base">Withdrawable from: ${withdrawableFromDate} UTC </text>` +
-              `<text x="10" y="100" class="base">Expires at: ${expiresAtDate} UTC</text>` +
-              `<text x="10" y="140" class="base">State: Pending: cannot be claimed yet.</text>` +
-              `</svg>`,
+          const expected = createClaimCheck({
+            tokenId: '0',
+            withdrawableFrom,
+            amountString,
+            status: 'pending',
           });
+
+          expect(actual).to.deep.equal(expected);
         });
 
         it('should not be able to claim before withdrawableFrom', async () => {
@@ -685,6 +645,27 @@ describe('CNStakedKLAY', () => {
               await time.increase(86400 * 7 + 1);
             });
 
+            it('should issue valid `valid` claim check with correct amount string', async () => {
+              const { withdrawableFrom } = await cnStaking.getApprovedStakingWithdrawalInfo('0');
+
+              const amountString = '1.000000000000000000';
+
+              const actual = JSON.parse(
+                Buffer.from((await claimCheck.tokenURI('0')).slice(28), 'base64').toString(),
+              );
+
+              actual.image = Buffer.from(actual.image.slice(26), 'base64').toString();
+
+              const expected = createClaimCheck({
+                tokenId: '0',
+                withdrawableFrom,
+                amountString,
+                status: 'valid',
+              });
+
+              expect(actual).to.deep.equal(expected);
+            });
+
             it('should not be able to claim by other account', async () => {
               await expect(cnStakedKLAY.for.bob.claim('0')).to.be.revertedWithCustomError(
                 cnStakedKLAY,
@@ -698,6 +679,30 @@ describe('CNStakedKLAY', () => {
                 [cnStaking.address, accounts.alice.address],
                 [-ETHER, ETHER],
               );
+            });
+
+            it('should issue valid `claimed` claim check with correct amount string', async () => {
+              await claimCheck.for.alice.approve(accounts.bob.address, '0');
+              await cnStakedKLAY.for.alice.claim('0');
+
+              const { withdrawableFrom } = await cnStaking.getApprovedStakingWithdrawalInfo('0');
+
+              const amountString = '1.000000000000000000';
+
+              const actual = JSON.parse(
+                Buffer.from((await claimCheck.tokenURI('0')).slice(28), 'base64').toString(),
+              );
+
+              actual.image = Buffer.from(actual.image.slice(26), 'base64').toString();
+
+              const expected = createClaimCheck({
+                tokenId: '0',
+                withdrawableFrom,
+                amountString,
+                status: 'claimed',
+              });
+
+              expect(actual).to.deep.equal(expected);
             });
 
             it('should be able to claim by another owner', async () => {
@@ -726,6 +731,27 @@ describe('CNStakedKLAY', () => {
               await time.increase(86400 * 14 + 1);
             });
 
+            it('should issue valid `expired` claim check with correct amount string', async () => {
+              const { withdrawableFrom } = await cnStaking.getApprovedStakingWithdrawalInfo('0');
+
+              const amountString = '1.000000000000000000';
+
+              const actual = JSON.parse(
+                Buffer.from((await claimCheck.tokenURI('0')).slice(28), 'base64').toString(),
+              );
+
+              actual.image = Buffer.from(actual.image.slice(26), 'base64').toString();
+
+              const expected = createClaimCheck({
+                tokenId: '0',
+                withdrawableFrom,
+                amountString,
+                status: 'expired',
+              });
+
+              expect(actual).to.deep.equal(expected);
+            });
+
             it('should re-stake when claiming after expiry', async () => {
               await claimCheck.for.alice.approve(accounts.bob.address, '0');
 
@@ -734,6 +760,30 @@ describe('CNStakedKLAY', () => {
               await expect(cnStakedKLAY.for.bob.claim('0'))
                 .to.changeEtherBalance(accounts.alice.address, '0')
                 .and.changeTokenBalance(cnStakedKLAY, accounts.alice.address, ETHER);
+            });
+
+            it('should issue valid `cancelled` claim check with correct amount string', async () => {
+              await claimCheck.for.alice.approve(accounts.bob.address, '0');
+              await cnStakedKLAY.for.alice.claim('0');
+
+              const { withdrawableFrom } = await cnStaking.getApprovedStakingWithdrawalInfo('0');
+
+              const amountString = '1.000000000000000000';
+
+              const actual = JSON.parse(
+                Buffer.from((await claimCheck.tokenURI('0')).slice(28), 'base64').toString(),
+              );
+
+              actual.image = Buffer.from(actual.image.slice(26), 'base64').toString();
+
+              const expected = createClaimCheck({
+                tokenId: '0',
+                withdrawableFrom,
+                amountString,
+                status: 'cancelled',
+              });
+
+              expect(actual).to.deep.equal(expected);
             });
 
             it('should re-stake to owner when claiming after expiry', async () => {
