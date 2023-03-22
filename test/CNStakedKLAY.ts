@@ -125,9 +125,9 @@ describe('CNStakedKLAY', () => {
         totalShares: await cnStakedKLAY.totalShares(),
         totalSupply: await cnStakedKLAY.totalSupply(),
       };
-      log.fromUtil(`## ${title} - cnStakedKLAY STATS`);
-      log.fromUtil(stats);
-      log.fromUtil(`## ${title} - cnStakedKLAY STATS END`);
+      log(`## ${title} - cnStakedKLAY STATS`);
+      log(stats);
+      log(`## ${title} - cnStakedKLAY STATS END`);
     };
   });
 
