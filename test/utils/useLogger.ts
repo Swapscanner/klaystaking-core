@@ -30,6 +30,7 @@ export const useLogger = ({ suppressOnSuccess = true } = {}) => {
     buffer = '';
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const log = (msg: any, { stackOffset = 0 } = {}) => {
     const { filepath, row, col } = parsePathFromStack(
       (new Error().stack ?? '').split('\n')[2 + stackOffset].trim(),
@@ -42,6 +43,7 @@ export const useLogger = ({ suppressOnSuccess = true } = {}) => {
         .join('\n') + '\n';
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   log.fromUtil = (msg: any) => log(msg, { stackOffset: 6 });
 
   return log;
