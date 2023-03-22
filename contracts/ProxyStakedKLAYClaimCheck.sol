@@ -7,6 +7,7 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/utils/Base64.sol';
 import '@openzeppelin/contracts/utils/Strings.sol';
 import './libs/BokkyPooBahsDateTimeLibrary.sol';
+import './ProxyStakedKLAYClaimCheckSVGUtils.sol';
 import './ProxyStakedKLAY.sol';
 
 /**
@@ -15,9 +16,11 @@ import './ProxyStakedKLAY.sol';
  */
 contract ProxyStakedKLAYClaimCheck is ERC721Enumerable, Ownable {
   ProxyStakedKLAY public staking;
+  string private _svgTitle;
 
   constructor(
-    ProxyStakedKLAY _staking
+    ProxyStakedKLAY _staking,
+    string memory svgTitle_
   )
     ERC721(
       string(abi.encodePacked('Unstaking ', _staking.name())),
@@ -26,6 +29,7 @@ contract ProxyStakedKLAYClaimCheck is ERC721Enumerable, Ownable {
     Ownable()
   {
     staking = _staking;
+    _svgTitle = svgTitle_;
     transferOwnership(address(_staking));
   }
 
@@ -64,29 +68,23 @@ contract ProxyStakedKLAYClaimCheck is ERC721Enumerable, Ownable {
     }
 
     string memory tokenIdString = Strings.toString(tokenId);
-    string memory valueString = _weiToReadableEther(value);
+    string memory valueIntegerString = _integerPartOfEtherFromWei(value);
+    string memory valueDecimalString = _decimalPartOfEtherFromWei(value);
     string memory withdrawableFromString = _timestampToUTCDate(withdrawableFrom);
     string memory expiresAtString = _timestampToUTCDate(withdrawableFrom + stakeLockup);
 
     bytes memory svg = abi.encodePacked(
-      '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" viewBox="0 0 350 350"><style>.base{fill:white;font-family:serif;font-size:14px;}</style><rect width="100%" height="100%" fill="black"/><text x="10" y="20" class="base">',
-      name(),
-      ' #',
+      ProxyStakedKLAYClaimCheckSVGUtils.HEAD(),
+      _svgTitle,
+      '</text><text x="20" y="98">KLAY #',
       tokenIdString,
-      '</text><text x="10" y="60" class="base">Amount: ',
-      valueString,
-      ' KLAY</text><text x="10" y="80" class="base">'
-    );
-
-    svg = abi.encodePacked(
-      svg,
-      'Withdrawable from: ',
+      '</text></g><g class="bold"><text x="20" y="157">',
+      valueIntegerString,
+      '</text><text x="196" y="157">KLAY</text></g><text x="20" y="168" class="small">',
+      valueDecimalString,
+      '</text><text x="20" y="201">Claimable from</text><text x="20" y="217" class="bold">',
       withdrawableFromString,
-      ' UTC </text><text x="10" y="100" class="base">Expires at: ',
-      expiresAtString,
-      ' UTC</text><text x="10" y="140" class="base">State: ',
-      descString,
-      '.</text></svg>'
+      ' UTC</text></svg>'
     );
 
     bytes memory json = abi.encodePacked(
@@ -95,7 +93,8 @@ contract ProxyStakedKLAYClaimCheck is ERC721Enumerable, Ownable {
       ' #',
       tokenIdString,
       '","description":"Claim check for ',
-      valueString,
+      valueIntegerString,
+      valueDecimalString,
       ' KLAY. Can be claimed after ',
       withdrawableFromString,
       ' UTC and expires at ',
@@ -118,43 +117,50 @@ contract ProxyStakedKLAYClaimCheck is ERC721Enumerable, Ownable {
 
   /// readable utils
 
-  function _weiToReadableEther(uint256 weiAmount) private pure returns (string memory) {
+  function _integerPartOfEtherFromWei(uint256 weiAmount) private pure returns (string memory) {
     uint256 integerPart = weiAmount / 1e18;
-    uint256 decimalPart = weiAmount % 1e18;
 
-    string memory integerPartString = Strings.toString(integerPart);
-    string memory decimalPartString = Strings.toString(decimalPart);
+    string memory rawString = Strings.toString(integerPart);
 
-    uint256 integerPartLength = bytes(integerPartString).length;
-    uint256 decimalPartLength = bytes(decimalPartString).length;
+    uint256 length = bytes(rawString).length;
+    uint256 commaCount = (length - 1) / 3;
 
-    uint256 commaCount = (integerPartLength - 1) / 3;
-
-    bytes memory result = new bytes(integerPartLength + commaCount + 18 + 1);
+    bytes memory result = new bytes(length + commaCount);
 
     uint256 resultIndex = 0;
-    for (uint256 i = 0; i < integerPartLength; i++) {
-      if (i > 0 && (integerPartLength - i) % 3 == 0) {
+    for (uint256 i = 0; i < length; i++) {
+      if (i > 0 && (length - i) % 3 == 0) {
         result[resultIndex] = ',';
         resultIndex++;
       }
 
-      result[resultIndex] = bytes(integerPartString)[i];
+      result[resultIndex] = bytes(rawString)[i];
       resultIndex++;
     }
+    return string(result);
+  }
 
-    result[resultIndex] = '.';
-    resultIndex++;
+  function _decimalPartOfEtherFromWei(uint256 weiAmount) private pure returns (string memory) {
+    uint256 decimalPart = weiAmount % 1e18;
+    if (decimalPart == 0) {
+      return '';
+    }
 
-    // pad decimal part with 0s
-    for (uint256 i = 0; i < 18 - decimalPartLength; i++) {
+    string memory rawString = Strings.toString(decimalPart);
+
+    uint256 length = bytes(rawString).length;
+
+    bytes memory result = new bytes(19);
+    result[0] = '.';
+
+    uint256 resultIndex = 1;
+    for (uint256 i = 0; i < 18 - length; i++) {
       result[resultIndex] = '0';
       resultIndex++;
     }
 
-    // copy decimal part
-    for (uint256 i = 0; i < decimalPartLength; i++) {
-      result[resultIndex] = bytes(decimalPartString)[i];
+    for (uint256 i = 0; i < length; i++) {
+      result[resultIndex] = bytes(rawString)[i];
       resultIndex++;
     }
 

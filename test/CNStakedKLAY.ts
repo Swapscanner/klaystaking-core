@@ -70,20 +70,29 @@ describe('CNStakedKLAY', () => {
     await cnStaking.depositLockupStakingAndInit({ value: '1' });
 
     // deploy contracts
-    cnStakedKLAY = await deployAccountsConnectedContract<CNStakedKLAYTest, AccountName>(
+    cnStakedKLAY = await deployAccountsConnectedContract<CNStakedKLAYTest, AccountName>({
       accounts,
-      misc,
-      'CNStakedKLAYTest',
-      feeTo.address,
-      cnStaking.address,
-    );
+      defaultAccount: misc,
+      contract: 'CNStakedKLAYTest',
+      args: [feeTo.address, cnStaking.address],
+    });
+    await cnStakedKLAY.deployed();
 
-    claimCheck = await deployAccountsConnectedContract<ProxyStakedKLAYClaimCheck, AccountName>(
-      accounts,
-      misc,
-      'ProxyStakedKLAYClaimCheck',
-      cnStakedKLAY.address,
+    const ProxyStakedKLAYClaimCheckSVGUtils = await ethers.getContractFactory(
+      'ProxyStakedKLAYClaimCheckSVGUtils',
     );
+    const proxyStakedKLAYClaimCheckSVGUtils = await ProxyStakedKLAYClaimCheckSVGUtils.deploy();
+    await proxyStakedKLAYClaimCheckSVGUtils.deployed();
+
+    claimCheck = await deployAccountsConnectedContract<ProxyStakedKLAYClaimCheck, AccountName>({
+      accounts,
+      defaultAccount: misc,
+      contract: 'ProxyStakedKLAYClaimCheck',
+      factoryOptions: {
+        libraries: { ProxyStakedKLAYClaimCheckSVGUtils: proxyStakedKLAYClaimCheckSVGUtils.address },
+      },
+      args: [cnStakedKLAY.address, 'Consensus Node Staked'],
+    });
 
     // configure contracts
     await cnStakedKLAY.for.deployer.setClaimCheck(claimCheck.address);
@@ -517,9 +526,7 @@ describe('CNStakedKLAY', () => {
 
           const { withdrawableFrom } = await cnStaking.getApprovedStakingWithdrawalInfo('0');
 
-          const amountString = '1.000000000000000000';
-
-          log(Buffer.from((await claimCheck.tokenURI('0')).slice(28), 'base64').toString());
+          const amountString = '1';
 
           const actual = JSON.parse(
             Buffer.from((await claimCheck.tokenURI('0')).slice(28), 'base64').toString(),
@@ -648,7 +655,7 @@ describe('CNStakedKLAY', () => {
             it('should issue valid `valid` claim check with correct amount string', async () => {
               const { withdrawableFrom } = await cnStaking.getApprovedStakingWithdrawalInfo('0');
 
-              const amountString = '1.000000000000000000';
+              const amountString = '1';
 
               const actual = JSON.parse(
                 Buffer.from((await claimCheck.tokenURI('0')).slice(28), 'base64').toString(),
@@ -687,7 +694,7 @@ describe('CNStakedKLAY', () => {
 
               const { withdrawableFrom } = await cnStaking.getApprovedStakingWithdrawalInfo('0');
 
-              const amountString = '1.000000000000000000';
+              const amountString = '1';
 
               const actual = JSON.parse(
                 Buffer.from((await claimCheck.tokenURI('0')).slice(28), 'base64').toString(),
@@ -734,7 +741,7 @@ describe('CNStakedKLAY', () => {
             it('should issue valid `expired` claim check with correct amount string', async () => {
               const { withdrawableFrom } = await cnStaking.getApprovedStakingWithdrawalInfo('0');
 
-              const amountString = '1.000000000000000000';
+              const amountString = '1';
 
               const actual = JSON.parse(
                 Buffer.from((await claimCheck.tokenURI('0')).slice(28), 'base64').toString(),
@@ -768,7 +775,7 @@ describe('CNStakedKLAY', () => {
 
               const { withdrawableFrom } = await cnStaking.getApprovedStakingWithdrawalInfo('0');
 
-              const amountString = '1.000000000000000000';
+              const amountString = '1';
 
               const actual = JSON.parse(
                 Buffer.from((await claimCheck.tokenURI('0')).slice(28), 'base64').toString(),
