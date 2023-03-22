@@ -526,6 +526,8 @@ describe('CNStakedKLAY', () => {
             .replace(/\.[0-9]+Z$/, '')
             .replace(/T/, ' ');
 
+          const amountString = '1.000000000000000000';
+
           log(Buffer.from((await claimCheck.tokenURI('0')).slice(28), 'base64').toString());
 
           const actual = JSON.parse(
@@ -537,7 +539,7 @@ describe('CNStakedKLAY', () => {
           expect(actual).to.deep.equal({
             name: 'Unstaking CNStakedKLAY #0',
             description:
-              `Claim check for 1.0 KLAY. Can be claimed after ${withdrawableFromDate} ` +
+              `Claim check for ${amountString} KLAY. Can be claimed after ${withdrawableFromDate} ` +
               `UTC and expires at ${expiresAtDate} UTC. Claiming after expiry will ` +
               `re-stake the tokens back to the owner. Pending: cannot be claimed yet.`,
             image:
@@ -546,7 +548,52 @@ describe('CNStakedKLAY', () => {
               `fill:white;font-family:serif;font-size:14px;}</style>` +
               `<rect width="100%" height="100%" fill="black"/>` +
               `<text x="10" y="20" class="base">Unstaking CNStakedKLAY #0</text>` +
-              `<text x="10" y="60" class="base">Amount: 1.0 KLAY</text>` +
+              `<text x="10" y="60" class="base">Amount: ${amountString} KLAY</text>` +
+              `<text x="10" y="80" class="base">Withdrawable from: ${withdrawableFromDate} UTC </text>` +
+              `<text x="10" y="100" class="base">Expires at: ${expiresAtDate} UTC</text>` +
+              `<text x="10" y="140" class="base">State: Pending: cannot be claimed yet.</text>` +
+              `</svg>`,
+          });
+        });
+
+        it('should be issue valid claim check with correct amount string', async () => {
+          await cnStakedKLAY.for.alice.stake({ value: 2000n * ETHER });
+
+          await cnStakedKLAY.for.alice.unstake(1234n * ETHER + 123n);
+
+          const { withdrawableFrom } = await cnStaking.getApprovedStakingWithdrawalInfo('0');
+
+          const withdrawableFromDate = new Date(+withdrawableFrom.toString() * 1000)
+            .toISOString()
+            .replace(/\.[0-9]+Z$/, '')
+            .replace(/T/, ' ');
+
+          const expiresAtDate = new Date(+withdrawableFrom.toString() * 1000 + 86400 * 1000 * 7)
+            .toISOString()
+            .replace(/\.[0-9]+Z$/, '')
+            .replace(/T/, ' ');
+
+          const amountString = '1,234.000000000000000123';
+
+          const actual = JSON.parse(
+            Buffer.from((await claimCheck.tokenURI('0')).slice(28), 'base64').toString(),
+          );
+
+          actual.image = Buffer.from(actual.image.slice(26), 'base64').toString();
+
+          expect(actual).to.deep.equal({
+            name: 'Unstaking CNStakedKLAY #0',
+            description:
+              `Claim check for ${amountString} KLAY. Can be claimed after ${withdrawableFromDate} ` +
+              `UTC and expires at ${expiresAtDate} UTC. Claiming after expiry will ` +
+              `re-stake the tokens back to the owner. Pending: cannot be claimed yet.`,
+            image:
+              `<svg xmlns="http://www.w3.org/2000/svg" ` +
+              `preserveAspectRatio="xMinYMin meet" viewBox="0 0 350 350"><style>.base{` +
+              `fill:white;font-family:serif;font-size:14px;}</style>` +
+              `<rect width="100%" height="100%" fill="black"/>` +
+              `<text x="10" y="20" class="base">Unstaking CNStakedKLAY #0</text>` +
+              `<text x="10" y="60" class="base">Amount: ${amountString} KLAY</text>` +
               `<text x="10" y="80" class="base">Withdrawable from: ${withdrawableFromDate} UTC </text>` +
               `<text x="10" y="100" class="base">Expires at: ${expiresAtDate} UTC</text>` +
               `<text x="10" y="140" class="base">State: Pending: cannot be claimed yet.</text>` +

@@ -130,7 +130,7 @@ contract ProxyStakedKLAYClaimCheck is ERC721Enumerable, Ownable {
 
     uint256 commaCount = (integerPartLength - 1) / 3;
 
-    bytes memory result = new bytes(integerPartLength + commaCount + decimalPartLength + 1);
+    bytes memory result = new bytes(integerPartLength + commaCount + 18 + 1);
 
     uint256 resultIndex = 0;
     for (uint256 i = 0; i < integerPartLength; i++) {
@@ -146,6 +146,13 @@ contract ProxyStakedKLAYClaimCheck is ERC721Enumerable, Ownable {
     result[resultIndex] = '.';
     resultIndex++;
 
+    // pad decimal part with 0s
+    for (uint256 i = 0; i < 18 - decimalPartLength; i++) {
+      result[resultIndex] = '0';
+      resultIndex++;
+    }
+
+    // copy decimal part
     for (uint256 i = 0; i < decimalPartLength; i++) {
       result[resultIndex] = bytes(decimalPartString)[i];
       resultIndex++;
