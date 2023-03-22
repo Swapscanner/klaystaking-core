@@ -11,10 +11,11 @@ export type AccountsConnectedContract<T, N extends string> = T & {
   for: AccountsConnectedContractFor<T, N>;
 };
 
-type DeployAccountsConnectedContractArgs<T extends Contract, N extends string> = {
+type DeployAccountsConnectedContractArgs<N extends string> = {
   accounts: Accounts<N>;
   defaultAccount: SignerWithAddress;
   contract: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   args: any[];
   factoryOptions?: FactoryOptions;
 };
@@ -25,7 +26,7 @@ export async function deployAccountsConnectedContract<T extends Contract, N exte
   contract: contractName,
   args,
   factoryOptions,
-}: DeployAccountsConnectedContractArgs<T, N>) {
+}: DeployAccountsConnectedContractArgs<N>) {
   const Contract = await ethers.getContractFactory(contractName, factoryOptions);
   const contract = await Contract.deploy(...args);
   const connectedContract = contract.connect(defaultAccount) as AccountsConnectedContract<T, N>;

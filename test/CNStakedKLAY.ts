@@ -33,7 +33,7 @@ describe('CNStakedKLAY', () => {
   let expectBalanceOf: StateAssertion;
   let expectSharesOf: StateAssertion;
 
-  let printStats: (msg: string) => Promise<any>;
+  let printStats: (msg: string) => Promise<void>;
 
   const log = useLogger();
 

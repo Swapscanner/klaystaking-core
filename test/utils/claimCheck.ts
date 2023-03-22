@@ -54,7 +54,6 @@ export const createImageOfClaimCheck = ({
   tokenId,
   amountString,
   withdrawableFrom,
-  status,
 }: {
   tokenId: string;
   amountString: string;
