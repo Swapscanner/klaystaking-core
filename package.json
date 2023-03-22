@@ -9,6 +9,8 @@
     "test": "hardhat test",
     "gas-report": "env REPORT_GAS=true yarn test",
     "coverage": "hardhat coverage",
+    "postinstall": "ln -sf \"$(pwd)/scripts/git/hooks/pre-commit.sh\" ./.git/hooks/pre-commit",
+    "precommit": "yarn lint && yarn test",
     "lint": "yarn lint:js && yarn lint:sol",
     "lint:fix": "yarn lint:js:fix && yarn lint:sol:fix",
     "lint:js": "prettier --loglevel warn --ignore-path .gitignore '**/*.{js,ts}' --check && eslint --ignore-path .gitignore .",
