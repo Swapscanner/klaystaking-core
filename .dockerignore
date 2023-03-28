@@ -6,10 +6,6 @@ coverage
 coverage.json
 typechain
 typechain-types
-crytic-export
-
-# echidna corpus
-echidna_e2e_corpus
 
 # Hardhat files
 cache

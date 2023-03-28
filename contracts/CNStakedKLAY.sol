@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity >=0.8.0 <0.9.0;
+pragma solidity =0.8.18;
 
 import './klaytn/cnstaking/CnStakingContract.sol';
 import './ProxyStakedKLAY.sol';
@@ -30,7 +30,7 @@ import './ProxyStakedKLAY.sol';
  *   1. Call cn2.stake()
  */
 abstract contract CNStakedKLAY is ProxyStakedKLAY {
-  CnStakingContract public cnStaking;
+  CnStakingContract public immutable cnStaking;
   uint256 private _unstaking;
 
   constructor(CnStakingContract _cnStaking) {
@@ -68,33 +68,38 @@ abstract contract CNStakedKLAY is ProxyStakedKLAY {
     return cnStaking.withdrawalRequestCount();
   }
 
+  function _increaseUnstakingAmount(uint256 amount) internal virtual {
+    _unstaking += amount;
+  }
+
+  function _decreaseUnstakingAmount(uint256 amount) internal virtual {
+    _unstaking -= amount;
+  }
+
   function _submitWithdrawalRequest(uint256 amount) internal virtual override {
-    uint256 withdrawalRequestId = _nextWithdrawalRequestId();
+    _increaseUnstakingAmount(amount);
 
     cnStaking.submitApproveStakingWithdrawal(address(this), amount);
-
-    uint256 _amount;
-    (_amount, , ) = withdrawalRequestInfo(withdrawalRequestId);
-    _unstaking += _amount;
   }
 
   function _cancelWithdrawal(uint256 withdrawalRequestId) internal virtual override {
-    cnStaking.submitCancelApprovedStakingWithdrawal(withdrawalRequestId);
+    uint256 amount;
+    (amount, , ) = withdrawalRequestInfo(withdrawalRequestId);
+    _decreaseUnstakingAmount(amount);
 
-    uint256 _amount;
-    (_amount, , ) = withdrawalRequestInfo(withdrawalRequestId);
-    _unstaking -= _amount;
+    cnStaking.submitCancelApprovedStakingWithdrawal(withdrawalRequestId);
   }
 
   function _claimWithdrawal(uint256 withdrawalRequestId) internal virtual override {
-    cnStaking.withdrawApprovedStaking(withdrawalRequestId);
+    uint256 amount;
+    (amount, , ) = withdrawalRequestInfo(withdrawalRequestId);
+    _decreaseUnstakingAmount(amount);
 
-    uint256 _amount;
-    (_amount, , ) = withdrawalRequestInfo(withdrawalRequestId);
-    _unstaking -= _amount;
+    cnStaking.withdrawApprovedStaking(withdrawalRequestId);
   }
 
   function _stake(uint256 amount) internal virtual override {
+    // slither-disable-next-line arbitrary-send-eth
     cnStaking.stakeKlay{value: amount}();
   }
 

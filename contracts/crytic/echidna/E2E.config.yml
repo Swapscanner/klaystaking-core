@@ -1,0 +1,18 @@
+testMode: assertion
+coverage: true
+codeSize: 0x10000
+balanceAddr: 0xffffffffffffffffffff
+balanceContract: 1
+cryticArgs: [
+    '--solc-remaps',
+    '@openzeppelin=node_modules/@openzeppelin hardhat=node_modules/hardhat',
+    # '--solc-args',
+    # 'optimize optimize-runs=800 metadata-hash=none',
+  ]
+filterFunctions: ['E2E.cnAdmin()', 'E2E.feeReceiver()', 'E2E.cnStakedKLAY()', 'E2E.claimCheck()']
+
+corpusDir: echidna_e2e_corpus
+seqLen: 1000
+testLimit: 100000
+timeout: 3600 # 1 hour
+maxTimeDelay: 1209610 # 2 weeks + 10 seconds

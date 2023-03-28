@@ -1,31 +1,27 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { time } from '@nomicfoundation/hardhat-network-helpers';
-import { CNStakedKLAYTest, CnStakingV2, ProxyStakedKLAYClaimCheck } from '../typechain-types';
+import { CNStakedKLAYV2Test, CnStakingV2, ProxyStakedKLAYClaimCheck } from '../typechain-types';
 import { useSnapshot } from './utils/useSnapshot';
 import { useLogger } from './utils/useLogger';
 import { BigNumber, BigNumberish } from 'ethers';
 import { TransactionResponse } from '@ethersproject/providers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expectEtherBalanceOf } from './utils/balanceAssertions';
 import { Accounts } from './utils/accounts';
-import {
-  AccountsConnectedContract,
-  deployAccountsConnectedContract,
-} from './utils/accountsConnectedContract';
+import { AccountsConnectedContract } from './utils/accountsConnectedContract';
 import { createClaimCheck } from './utils/claimCheck';
+import { AccountName, setupCNStakedKLAY } from './utils/setupCNStakedKLAY';
 
-type AccountName = 'deployer' | 'alice' | 'bob' | 'carol' | 'foundationAdmin' | 'cnAdmin' | 'feeTo';
 type StateAssertion = (account: string | { address: string }) => Chai.PromisedAssertion;
 
+const PRECISION_MULTIPLIER = 10n ** 27n;
 const ETHER = 10n ** 18n;
 
 describe('CNStakedKLAY', () => {
-  let allAccounts: SignerWithAddress[];
   let accounts: Accounts<AccountName>;
 
   let cnStaking: CnStakingV2;
-  let cnStakedKLAY: AccountsConnectedContract<CNStakedKLAYTest, AccountName>;
+  let cnStakedKLAY: AccountsConnectedContract<CNStakedKLAYV2Test, AccountName>;
   let claimCheck: AccountsConnectedContract<ProxyStakedKLAYClaimCheck, AccountName>;
 
   let issueReward: (amount: BigNumberish) => Promise<TransactionResponse>;
@@ -38,65 +34,18 @@ describe('CNStakedKLAY', () => {
   const log = useLogger();
 
   useSnapshot(async () => {
-    allAccounts = await ethers.getSigners();
+    const {
+      accounts: _accounts,
+      cnStaking: _cnStaking,
+      cnStakedKLAY: _cnStakedKLAY,
+      claimCheck: _claimCheck,
+      misc,
+    } = await setupCNStakedKLAY();
 
-    // let's make everyone rich
-    for (const account of allAccounts) {
-      await ethers.provider.send('hardhat_setBalance', [
-        account.address,
-        '0x' + (0x1c9c380000000n * ETHER).toString(16),
-      ]);
-    }
-
-    const [deployer, foundationAdmin, cnAdmin, feeTo, misc, alice, bob, carol] = allAccounts;
-    accounts = { deployer, foundationAdmin, cnAdmin, feeTo, alice, bob, carol };
-
-    // deploy contracts
-    const CnStakingV2 = await ethers.getContractFactory('CnStakingV2');
-    cnStaking = await CnStakingV2.deploy(
-      foundationAdmin.address,
-      foundationAdmin.address,
-      foundationAdmin.address,
-      [cnAdmin.address],
-      1,
-      [Math.floor(Date.now() / 1000) + 10],
-      [1],
-      // { gasLimit: "0x1c9c380000000" }
-    );
-    await cnStaking.connect(foundationAdmin).setGCId(1);
-    // await cnStaking.setStakingTracker(cnStaking.address, { from: accounts[1] });
-    await cnStaking.connect(foundationAdmin).reviewInitialConditions();
-    await cnStaking.connect(cnAdmin).reviewInitialConditions();
-    await cnStaking.depositLockupStakingAndInit({ value: '1' });
-
-    // deploy contracts
-    cnStakedKLAY = await deployAccountsConnectedContract<CNStakedKLAYTest, AccountName>({
-      accounts,
-      defaultAccount: misc,
-      contract: 'CNStakedKLAYTest',
-      args: [feeTo.address, cnStaking.address],
-    });
-    await cnStakedKLAY.deployed();
-
-    const ProxyStakedKLAYClaimCheckSVGUtils = await ethers.getContractFactory(
-      'ProxyStakedKLAYClaimCheckSVGUtils',
-    );
-    const proxyStakedKLAYClaimCheckSVGUtils = await ProxyStakedKLAYClaimCheckSVGUtils.deploy();
-    await proxyStakedKLAYClaimCheckSVGUtils.deployed();
-
-    claimCheck = await deployAccountsConnectedContract<ProxyStakedKLAYClaimCheck, AccountName>({
-      accounts,
-      defaultAccount: misc,
-      contract: 'ProxyStakedKLAYClaimCheck',
-      factoryOptions: {
-        libraries: { ProxyStakedKLAYClaimCheckSVGUtils: proxyStakedKLAYClaimCheckSVGUtils.address },
-      },
-      args: [cnStakedKLAY.address, 'Consensus Node Staked'],
-    });
-
-    // configure contracts
-    await cnStakedKLAY.for.deployer.setClaimCheck(claimCheck.address);
-    await cnStaking.connect(cnAdmin).submitAddAdmin(cnStakedKLAY.address);
+    accounts = _accounts;
+    cnStaking = _cnStaking;
+    cnStakedKLAY = _cnStakedKLAY;
+    claimCheck = _claimCheck;
 
     issueReward = (amount: BigNumberish) =>
       misc.sendTransaction({
@@ -346,7 +295,7 @@ describe('CNStakedKLAY', () => {
 
       it('should revert on too high fee', async () => {
         await expect(
-          cnStakedKLAY.for.deployer.setFee(accounts.feeTo.address, 30, 100),
+          cnStakedKLAY.for.deployer.setFee(accounts.feeTo.address, 40, 100),
         ).to.be.revertedWithCustomError(cnStakedKLAY, 'ExcessiveFee');
       });
 
@@ -410,7 +359,7 @@ describe('CNStakedKLAY', () => {
       });
 
       it('should have correct total shares', async () => {
-        expect(await cnStakedKLAY.totalShares()).to.equal(10n ** 18n);
+        expect(await cnStakedKLAY.totalShares()).to.equal(10n ** 18n * PRECISION_MULTIPLIER);
       });
 
       describe('and reward issued and fee is zero', () => {
@@ -540,6 +489,9 @@ describe('CNStakedKLAY', () => {
             amountString,
             status: 'pending',
           });
+
+          log(actual.image);
+          log(expected.image);
 
           expect(actual).to.deep.equal(expected);
         });
@@ -847,8 +799,8 @@ describe('CNStakedKLAY', () => {
         await expectBalanceOf(accounts.bob).to.equal(2n * ETHER);
 
         // shares
-        await expectSharesOf(accounts.alice).to.equal(ETHER);
-        await expectSharesOf(accounts.bob).to.equal(2n * ETHER);
+        await expectSharesOf(accounts.alice).to.equal(ETHER * PRECISION_MULTIPLIER);
+        await expectSharesOf(accounts.bob).to.equal(2n * ETHER * PRECISION_MULTIPLIER);
       });
 
       describe('when reward issued', () => {
@@ -858,7 +810,7 @@ describe('CNStakedKLAY', () => {
 
         it('should distribute rewards based on a percentage of shares', async () => {
           expect(await cnStakedKLAY.totalSupply()).to.equal(6n * ETHER);
-          expect(await cnStakedKLAY.totalShares()).to.equal(3n * ETHER);
+          expect(await cnStakedKLAY.totalShares()).to.equal(3n * ETHER * PRECISION_MULTIPLIER);
 
           await expectBalanceOf(accounts.alice).to.equal(2n * ETHER);
           await expectBalanceOf(accounts.bob).to.equal(4n * ETHER);
@@ -868,7 +820,7 @@ describe('CNStakedKLAY', () => {
           await cnStakedKLAY.sweep();
 
           expect(await cnStakedKLAY.totalSupply()).to.equal(6n * ETHER);
-          expect(await cnStakedKLAY.totalShares()).to.equal(3n * ETHER);
+          expect(await cnStakedKLAY.totalShares()).to.equal(3n * ETHER * PRECISION_MULTIPLIER);
 
           await expectBalanceOf(accounts.alice).to.equal(2n * ETHER);
           await expectBalanceOf(accounts.bob).to.equal(4n * ETHER);
@@ -882,7 +834,7 @@ describe('CNStakedKLAY', () => {
           await printStats('after unstake');
 
           await expectBalanceOf(accounts.bob).to.equal(2n * ETHER);
-          await expectSharesOf(accounts.bob).to.equal(ETHER);
+          await expectSharesOf(accounts.bob).to.equal(ETHER * PRECISION_MULTIPLIER);
 
           log('issuing reward of 3 KLAY');
           // total staked amount at this point = 4 KLAY
@@ -897,8 +849,8 @@ describe('CNStakedKLAY', () => {
           // accounts[1] - 3 cnStakedKLAY, 1 share
           await expectBalanceOf(accounts.alice).to.equal(3n * ETHER);
           await expectBalanceOf(accounts.bob).to.equal(3n * ETHER);
-          await expectSharesOf(accounts.alice).to.equal(ETHER);
-          await expectSharesOf(accounts.bob).to.equal(ETHER);
+          await expectSharesOf(accounts.alice).to.equal(ETHER * PRECISION_MULTIPLIER);
+          await expectSharesOf(accounts.bob).to.equal(ETHER * PRECISION_MULTIPLIER);
 
           // performing sweep
           await cnStakedKLAY.sweep();
@@ -907,8 +859,8 @@ describe('CNStakedKLAY', () => {
           // confirming final balances remain the same
           await expectBalanceOf(accounts.alice).to.equal(3n * ETHER);
           await expectBalanceOf(accounts.bob).to.equal(3n * ETHER);
-          await expectSharesOf(accounts.alice).to.equal(ETHER);
-          await expectSharesOf(accounts.bob).to.equal(ETHER);
+          await expectSharesOf(accounts.alice).to.equal(ETHER * PRECISION_MULTIPLIER);
+          await expectSharesOf(accounts.bob).to.equal(ETHER * PRECISION_MULTIPLIER);
 
           // confirming fee is sent to the fee collector
           await expectBalanceOf(accounts.feeTo).to.equal(ETHER - 1n);
@@ -923,7 +875,7 @@ describe('CNStakedKLAY', () => {
     it('should be emitted on stake', async () => {
       await expect(cnStakedKLAY.for.alice.stake({ value: ETHER }))
         .to.emit(cnStakedKLAY, 'PeriodicStakingStats')
-        .withArgs(ETHER, ETHER);
+        .withArgs(ETHER * PRECISION_MULTIPLIER, ETHER);
     });
 
     it('should not be emitted multiple times within the debounce interval', async () => {
@@ -944,7 +896,7 @@ describe('CNStakedKLAY', () => {
 
       await expect(cnStakedKLAY.for.alice.stake({ value: ETHER }))
         .to.emit(cnStakedKLAY, 'PeriodicStakingStats')
-        .withArgs(2n * ETHER, 2n * ETHER);
+        .withArgs(2n * ETHER * PRECISION_MULTIPLIER, 2n * ETHER);
     });
   });
 
