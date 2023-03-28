@@ -2,6 +2,7 @@
 pragma solidity =0.8.18;
 
 import 'hardhat/console.sol';
+
 import '@openzeppelin/contracts/proxy/utils/Initializable.sol';
 import '../..//klaytn/cnstakingv2/CnStakingV2.sol';
 import '../../test/CNStakedKLAYV2Test.sol';
@@ -72,17 +73,15 @@ contract E2E {
   CNStakedKLAYV2Test public cnStakedKLAY;
   ProxyStakedKLAYClaimCheck public claimCheck;
 
-  address _onReceiveTarget;
-  bytes _onReceiveData;
-
   constructor() payable {
     require(msg.value == 1, 'msg.value must be 1');
-    cnAdmin.initialize{value: 1}(address(this));
 
     cnStakedKLAY = new CNStakedKLAYV2Test(
       address(feeReceiver),
       CnStakingContract(payable(address(cnAdmin.cnStaking())))
     );
+
+    cnAdmin.initialize{value: 1}(address(cnStakedKLAY));
 
     claimCheck = new ProxyStakedKLAYClaimCheck(
       cnStakedKLAY,
@@ -101,16 +100,7 @@ contract E2E {
     return result;
   }
 
-  function setOnReceive(address target, bytes memory data) external {
-    _onReceiveTarget = target;
-    _onReceiveData = data;
-  }
-
-  receive() external payable {
-    if (_onReceiveTarget != address(0)) {
-      proxy(_onReceiveTarget, _onReceiveData);
-    }
-  }
+  receive() external payable {}
 
   function testTotalShares(address account) public view {
     assert(cnStakedKLAY.sharesOf(account) <= cnStakedKLAY.totalShares());
@@ -130,7 +120,9 @@ contract E2E {
     uint256 previousCNBalance = address(cnAdmin.cnStaking()).balance;
     uint256 previousTotalSupply = cnStakedKLAY.totalSupply();
 
-    cnStakedKLAY.sweep();
+    try cnStakedKLAY.sweep() {} catch {
+      assert(false);
+    }
 
     uint256 afterCNBalance = address(cnAdmin.cnStaking()).balance;
     uint256 afterTotalSupply = cnStakedKLAY.totalSupply();
@@ -143,34 +135,70 @@ contract E2E {
   function testStake() public payable {
     uint256 beforeBalance = cnStakedKLAY.balanceOf(address(this));
     uint256 amount = msg.value;
-    cnStakedKLAY.stake{value: amount}();
+
+    try cnStakedKLAY.stake{value: amount}() {} catch {
+      assert(false);
+    }
+
     uint256 afterBalance = cnStakedKLAY.balanceOf(address(this));
     assert(afterBalance >= beforeBalance + amount - 1);
   }
 
   function testStakeFor() public payable {
-    uint256 beforeBalance = cnStakedKLAY.balanceOf(msg.sender);
+    uint256 beforeBalance = cnStakedKLAY.balanceOf(address(this));
     uint256 amount = msg.value;
-    cnStakedKLAY.stakeFor{value: msg.value}(msg.sender);
-    uint256 afterBalance = cnStakedKLAY.balanceOf(msg.sender);
+
+    try cnStakedKLAY.stakeFor{value: msg.value}(address(this)) {} catch {
+      assert(false);
+    }
+
+    uint256 afterBalance = cnStakedKLAY.balanceOf(address(this));
     assert(afterBalance >= beforeBalance + amount - 1);
   }
 
   function testUnstake(uint256 amount) public {
     uint256 beforeBalance = cnStakedKLAY.balanceOf(address(this));
     require(amount <= beforeBalance, 'amount must be less than balance');
-    cnStakedKLAY.unstake(amount);
+    require(amount > 0, 'amount must be greater than 0');
+
+    try cnStakedKLAY.unstake(amount) {} catch (bytes memory reason) {
+      bytes4 desiredSelector = bytes4(keccak256(bytes('AmountTooSmall()')));
+      bytes4 receivedSelector = bytes4(reason);
+      assert(desiredSelector == receivedSelector);
+    }
+
     uint256 afterBalance = cnStakedKLAY.balanceOf(address(this));
     assert(afterBalance < beforeBalance);
   }
 
   function testUnstakeAll() public {
-    cnStakedKLAY.unstakeAll();
+    uint256 beforeBalance = cnStakedKLAY.balanceOf(address(this));
+    require(beforeBalance > 0, 'balance must be greater than 0');
+
+    try cnStakedKLAY.unstakeAll() {} catch (bytes memory reason) {
+      bytes4 desiredSelector = bytes4(keccak256('AmountTooSmall()'));
+      bytes4 receivedSelector = bytes4(reason);
+      assert(desiredSelector == receivedSelector);
+    }
+
     uint256 afterBalance = cnStakedKLAY.balanceOf(address(this));
     assert(afterBalance == 0);
   }
 
-  function testCancel(uint256 tokenId) public {
+  function _getRandomTokenId(uint256 input) internal view returns (uint256) {
+    uint256 balance = claimCheck.balanceOf(address(this));
+    return claimCheck.tokenOfOwnerByIndex(address(this), input % balance);
+  }
+
+  function testCancel(uint256 input) public {
+    uint256 tokenId = _getRandomTokenId(input);
+
+    uint256 amount;
+    ProxyStakedKLAY.WithdrawalRequestState state;
+    (, , state) = cnStakedKLAY.withdrawalRequestInfo(tokenId);
+    require(state == ProxyStakedKLAY.WithdrawalRequestState.Unknown, 'state must be Unknown');
+
+    uint256 ethBalanceBefore = address(this).balance;
     uint256 tokenBalanceBefore = cnStakedKLAY.balanceOf(address(this));
     uint256 totalSupplyBefore = cnStakedKLAY.totalSupply();
     uint256 shareBefore = cnStakedKLAY.sharesOf(address(this));
@@ -178,34 +206,65 @@ contract E2E {
 
     cnStakedKLAY.cancel(tokenId);
 
-    uint256 amount;
-    ProxyStakedKLAY.WithdrawalRequestState state;
     (, , state) = cnStakedKLAY.withdrawalRequestInfo(tokenId);
     assert(state == ProxyStakedKLAY.WithdrawalRequestState.Cancelled);
 
+    uint256 ethBalanceAfter = address(this).balance;
     uint256 tokenBalanceAfter = cnStakedKLAY.balanceOf(address(this));
     uint256 totalSupplyAfter = cnStakedKLAY.totalSupply();
     uint256 shareAfter = cnStakedKLAY.sharesOf(address(this));
     uint256 totalShareAfter = cnStakedKLAY.totalShares();
 
+    assert(ethBalanceBefore == ethBalanceAfter);
     assert(tokenBalanceAfter >= tokenBalanceBefore + amount - 1);
     assert(totalSupplyAfter >= totalSupplyBefore + amount - 1);
     assert(shareAfter > shareBefore);
     assert(totalShareAfter > totalShareBefore);
   }
 
-  function testClaim(uint256 tokenId) public {
-    uint256 balanceBefore = address(this).balance;
-
-    cnStakedKLAY.claim(tokenId);
+  function testClaim(uint256 input) public {
+    uint256 tokenId = _getRandomTokenId(input);
 
     uint256 amount;
     ProxyStakedKLAY.WithdrawalRequestState state;
     (amount, , state) = cnStakedKLAY.withdrawalRequestInfo(tokenId);
-    assert(state == ProxyStakedKLAY.WithdrawalRequestState.Cancelled);
+    require(state == ProxyStakedKLAY.WithdrawalRequestState.Unknown, 'state must be Unknown');
 
-    uint256 balanceAfter = address(this).balance;
+    uint256 ethBalanceBefore = address(this).balance;
+    uint256 tokenBalanceBefore = cnStakedKLAY.balanceOf(address(this));
+    uint256 totalSupplyBefore = cnStakedKLAY.totalSupply();
+    uint256 shareBefore = cnStakedKLAY.sharesOf(address(this));
+    uint256 totalShareBefore = cnStakedKLAY.totalShares();
 
-    assert(balanceAfter == balanceBefore + amount);
+    try cnStakedKLAY.claim(tokenId) {} catch Error(string memory reason) {
+      bytes32 desiredReason = keccak256('Not withdrawable yet.');
+      bytes32 receivedReason = keccak256(bytes(reason));
+      assert(desiredReason == receivedReason);
+    }
+
+    uint256 ethBalanceAfter = address(this).balance;
+    uint256 tokenBalanceAfter = cnStakedKLAY.balanceOf(address(this));
+    uint256 totalSupplyAfter = cnStakedKLAY.totalSupply();
+    uint256 shareAfter = cnStakedKLAY.sharesOf(address(this));
+    uint256 totalShareAfter = cnStakedKLAY.totalShares();
+
+    (amount, , state) = cnStakedKLAY.withdrawalRequestInfo(tokenId);
+    if (state == ProxyStakedKLAY.WithdrawalRequestState.Transferred) {
+      assert(ethBalanceAfter == ethBalanceBefore + amount);
+    } else if (state == ProxyStakedKLAY.WithdrawalRequestState.Cancelled) {
+      assert(ethBalanceBefore == ethBalanceAfter);
+      assert(tokenBalanceAfter >= tokenBalanceBefore + amount - 1);
+      assert(totalSupplyAfter >= totalSupplyBefore + amount - 1);
+      assert(shareAfter > shareBefore);
+      assert(totalShareAfter > totalShareBefore);
+    } else if (state == ProxyStakedKLAY.WithdrawalRequestState.Unknown) {
+      assert(ethBalanceBefore == ethBalanceAfter);
+      assert(tokenBalanceAfter == tokenBalanceBefore);
+      assert(totalSupplyAfter == totalSupplyBefore);
+      assert(shareAfter == shareBefore);
+      assert(totalShareAfter == totalShareBefore);
+    } else {
+      assert(false);
+    }
   }
 }
