@@ -11,19 +11,11 @@ import '../CNStakedKLAY.sol';
  *   without `receive()` being invoked. However there is no easy way for us to send reward
  *   to this contract on test environment without triggering `receive()`.
  */
-contract CNStakedKLAYTest is CNStakedKLAY {
+contract CNStakedKLAYV1Test is CNStakedKLAY {
   constructor(
     address _feeTo,
     CnStakingContract _cnStaking
-  ) CNStakedKLAY(_cnStaking) ProxyStakedKLAY(_feeTo, 'CNStakedKLAY', 'sKLAY') {}
-
-  function withdrawalRequestTTL() public view override returns (uint256) {
-    return CnStakingV2(payable(address(cnStaking))).STAKE_LOCKUP();
-  }
-
-  function _unstakingAmount() internal view override returns (uint256) {
-    return CnStakingV2(payable(address(cnStaking))).unstaking();
-  }
+  ) CNStakedKLAY(_cnStaking) ProxyStakedKLAY(_feeTo, 'CNStakedKLAYV1', 'sKLAY') {}
 
   receive() external payable {}
 }

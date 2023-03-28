@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity >=0.8.0 <0.9.0;
+pragma solidity =0.8.18;
+
+import 'hardhat/console.sol';
 
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
@@ -34,7 +36,8 @@ abstract contract ProxyStakedKLAY is ERC20, ERC20VotesCustomBalance, Ownable {
 
   ProxyStakedKLAYClaimCheck public claimCheck;
 
-  uint256 public constant MAX_FEE_PERCENTAGE = 20;
+  uint256 public constant PRECISION_MULTIPLIER = 1e27;
+  uint256 public constant MAX_FEE_PERCENTAGE = 30;
 
   address public feeTo;
   uint256 public feeNumerator = 0;
@@ -68,9 +71,9 @@ abstract contract ProxyStakedKLAY is ERC20, ERC20VotesCustomBalance, Ownable {
     feeTo = _feeTo;
   }
 
-  function setClaimCheck(ProxyStakedKLAYClaimCheck _claimCheck) external onlyOwner {
+  function setClaimCheck(ProxyStakedKLAYClaimCheck newClaimCheck) public onlyOwner {
     if (address(claimCheck) != address(0)) revert AlreadyInitialized();
-    claimCheck = _claimCheck;
+    claimCheck = newClaimCheck;
   }
 
   /// virtual functions
@@ -102,21 +105,28 @@ abstract contract ProxyStakedKLAY is ERC20, ERC20VotesCustomBalance, Ownable {
   /// admin functions
 
   function setFee(
-    address _feeTo,
-    uint256 _feeNumerator,
-    uint256 _feeDenominator
+    address newFeeTo,
+    uint256 newFeeNumerator,
+    uint256 newFeeDenominator
   ) external onlyOwner {
-    if ((100 * _feeNumerator) / _feeDenominator > MAX_FEE_PERCENTAGE) revert ExcessiveFee();
+    if ((100 * newFeeNumerator) / newFeeDenominator > MAX_FEE_PERCENTAGE) revert ExcessiveFee();
 
-    if (_feeNumerator > 0 && _feeTo == address(0)) {
+    if (newFeeNumerator > 0 && newFeeTo == address(0)) {
       revert UndefinedFeeTo();
     }
 
-    emit FeeUpdated(feeTo, _feeTo, feeNumerator, feeDenominator, _feeNumerator, _feeDenominator);
+    emit FeeUpdated(
+      feeTo,
+      newFeeTo,
+      feeNumerator,
+      feeDenominator,
+      newFeeNumerator,
+      newFeeDenominator
+    );
 
-    feeTo = _feeTo;
-    feeNumerator = _feeNumerator;
-    feeDenominator = _feeDenominator;
+    feeTo = newFeeTo;
+    feeNumerator = newFeeNumerator;
+    feeDenominator = newFeeDenominator;
   }
 
   function setPeriodicStakingStatsDebounceInterval(uint256 interval) external onlyOwner {
@@ -139,22 +149,28 @@ abstract contract ProxyStakedKLAY is ERC20, ERC20VotesCustomBalance, Ownable {
     _sweepAndStake(recipient, msg.value);
   }
 
-  function unstake(uint256 amount) external {
+  function unstake(uint256 amount) external returns (uint256 tokenId) {
     uint256 balance = balanceOf(_msgSender());
-    _unstakeShares(
-      _msgSender(),
-      balance == amount ? sharesOf[_msgSender()] : _sharesForNative(amount),
-      amount
-    );
+    // slither-disable-next-line incorrect-equality
+    return
+      _unstakeShares(
+        _msgSender(),
+        balance == amount ? sharesOf[_msgSender()] : _sharesForNative(amount),
+        amount
+      );
   }
 
-  function unstakeAll() external {
+  function unstakeAll() external returns (uint256 tokenId) {
     uint256 shares = sharesOf[_msgSender()];
-    _unstakeShares(_msgSender(), shares, _nativeForShares(shares));
+    return _unstakeShares(_msgSender(), shares, _nativeForShares(shares));
   }
 
-  function _unstakeShares(address account, uint256 shares, uint256 amount) private {
-    if (shares == 0) revert AmountTooSmall();
+  function _unstakeShares(
+    address account,
+    uint256 shares,
+    uint256 amount
+  ) private returns (uint256 tokenId) {
+    if (shares < 1) revert AmountTooSmall();
 
     _beforeTokenTransfer(account, address(0), shares);
 
@@ -166,10 +182,10 @@ abstract contract ProxyStakedKLAY is ERC20, ERC20VotesCustomBalance, Ownable {
       totalShares -= shares;
     }
 
-    uint256 withdrawalRequestId = _nextWithdrawalRequestId();
+    tokenId = _nextWithdrawalRequestId();
     _submitWithdrawalRequest(totalShares == 0 ? _stakedAmount() - _unstakingAmount() : amount);
 
-    claimCheck.mint(account, withdrawalRequestId);
+    claimCheck.mint(account, tokenId);
 
     // burn
     emit Transfer(account, address(0), amount);
@@ -180,24 +196,22 @@ abstract contract ProxyStakedKLAY is ERC20, ERC20VotesCustomBalance, Ownable {
   }
 
   function cancel(uint256 claimCheckTokenId) external {
-    _finalizeWithdrawal(claimCheckTokenId, _cancelWithdrawal);
+    _cancelWithdrawal(claimCheckTokenId);
+    _finalizeWithdrawal(claimCheckTokenId);
   }
 
   function claim(uint256 claimCheckTokenId) external {
-    _finalizeWithdrawal(claimCheckTokenId, _claimWithdrawal);
+    _claimWithdrawal(claimCheckTokenId);
+    _finalizeWithdrawal(claimCheckTokenId);
   }
 
-  function _finalizeWithdrawal(uint256 claimCheckTokenId, function(uint256) finalizer) private {
+  function _finalizeWithdrawal(uint256 claimCheckTokenId) private {
     address claimCheckOwner = claimCheck.ownerOf(claimCheckTokenId);
     if (
       _msgSender() != claimCheckOwner &&
       !claimCheck.isApprovedForAll(claimCheckOwner, _msgSender()) &&
       claimCheck.getApproved(claimCheckTokenId) != _msgSender()
     ) revert PermissionDenied();
-
-    claimCheck.burn(claimCheckTokenId);
-
-    finalizer(claimCheckTokenId);
 
     uint256 amount;
     WithdrawalRequestState state;
@@ -206,11 +220,16 @@ abstract contract ProxyStakedKLAY is ERC20, ERC20VotesCustomBalance, Ownable {
     if (state == WithdrawalRequestState.Cancelled) {
       _mintSharesForNativeAmount(claimCheckOwner, amount, amount);
     } else if (state == WithdrawalRequestState.Transferred) {
+      // reentrancy is guarded by the _cancelWithdrawal/_claimWithdrawal, which will eventually
+      // call CnStakingV2, which will revert on reentrancy.
+      // slither-disable-next-line reentrancy-benign
       Address.sendValue(payable(claimCheckOwner), amount);
       sweep();
     } else {
       revert InvalidState();
     }
+
+    claimCheck.burn(claimCheckTokenId);
   }
 
   /**
@@ -231,7 +250,7 @@ abstract contract ProxyStakedKLAY is ERC20, ERC20VotesCustomBalance, Ownable {
   function _sweepAndStake(address stakingRecipient, uint256 amountToBeStaked) private {
     // _stake() must be called before _mintSharesForNativeAmount() to prevent reentrancy.
     uint256 amountToBeSweeped = address(this).balance;
-    if (amountToBeSweeped == 0) return;
+    if (amountToBeSweeped < 1) return;
     _stake(amountToBeSweeped);
 
     uint256 feeAmount = _feeAmount(
@@ -248,6 +267,8 @@ abstract contract ProxyStakedKLAY is ERC20, ERC20VotesCustomBalance, Ownable {
 
     // report stats
     if (
+      // timestamp is being used only for reporting purpose
+      // slither-disable-next-line timestamp
       periodicStakingStatsLastEmittedAt + periodicStakingStatsDebounceInterval < block.timestamp
     ) {
       periodicStakingStatsLastEmittedAt = block.timestamp;
@@ -258,7 +279,7 @@ abstract contract ProxyStakedKLAY is ERC20, ERC20VotesCustomBalance, Ownable {
   function _feeAmount(uint256 stakedAmount, uint256 rewardAmount) private view returns (uint256) {
     uint256 rewardForStakedAmount = (
       // edge case: if nobody has staked yet.
-      stakedAmount == 0
+      stakedAmount < 1
         ? 0
         : Math.mulDiv(rewardAmount, stakedAmount - _unstakingAmount(), stakedAmount)
     );
@@ -285,7 +306,7 @@ abstract contract ProxyStakedKLAY is ERC20, ERC20VotesCustomBalance, Ownable {
       nativeAmount,
       totalSupply() - unmintedNativeAmount
     );
-    if (shares == 0) revert AmountTooSmall();
+    if (shares < 1) revert AmountTooSmall();
 
     _beforeTokenTransfer(address(0), recipient, shares);
 
@@ -346,6 +367,7 @@ abstract contract ProxyStakedKLAY is ERC20, ERC20VotesCustomBalance, Ownable {
 
     uint256 fromBalance = sharesOf[from];
     uint256 shares;
+    // slither-disable-next-line incorrect-equality
     if (balanceOf(from) == amount) {
       // edge case: if the entire balance is being transferred,
       // the entire shares should be transferred.
@@ -400,8 +422,8 @@ abstract contract ProxyStakedKLAY is ERC20, ERC20VotesCustomBalance, Ownable {
 
   function _nativeForShares(uint256 shares) private view returns (uint256) {
     return
-      totalSupply() == 0 || totalShares == 0
-        ? shares
+      totalSupply() < 1 || totalShares < 1
+        ? shares / PRECISION_MULTIPLIER
         : Math.mulDiv(totalSupply(), shares, totalShares);
   }
 
@@ -410,8 +432,8 @@ abstract contract ProxyStakedKLAY is ERC20, ERC20VotesCustomBalance, Ownable {
     uint256 _totalSupply
   ) private view returns (uint256) {
     return
-      _totalSupply == 0 || totalShares == 0
-        ? native
+      _totalSupply < 1 || totalShares < 1
+        ? native * PRECISION_MULTIPLIER
         : Math.mulDiv(native, totalShares, _totalSupply);
   }
 
