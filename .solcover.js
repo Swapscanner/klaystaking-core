@@ -1,3 +1,3 @@
 module.exports = {
-  skipFiles: ['klaytn', 'libs', 'test'],
+  skipFiles: ['klaytn', 'libs', 'test', 'crytic'],
 };
