@@ -17,7 +17,7 @@ type StateAssertion = (account: string | { address: string }) => Chai.PromisedAs
 const PRECISION_MULTIPLIER = 10n ** 27n;
 const ETHER = 10n ** 18n;
 
-describe('CNStakedKLAY', () => {
+describe('ProxyStakedKLAY', () => {
   let accounts: Accounts<AccountName>;
 
   let cnStaking: CnStakingV2;
@@ -869,47 +869,13 @@ describe('CNStakedKLAY', () => {
     });
   });
 
-  describe('PeriodicStakingStats', () => {
+  describe('Stats', () => {
     useSnapshot();
 
     it('should be emitted on stake', async () => {
       await expect(cnStakedKLAY.for.alice.stake({ value: ETHER }))
-        .to.emit(cnStakedKLAY, 'PeriodicStakingStats')
+        .to.emit(cnStakedKLAY, 'Stats')
         .withArgs(ETHER * PRECISION_MULTIPLIER, ETHER);
-    });
-
-    it('should not be emitted multiple times within the debounce interval', async () => {
-      await cnStakedKLAY.for.alice.stake({ value: ETHER });
-
-      await expect(cnStakedKLAY.for.alice.stake({ value: ETHER })).to.not.emit(
-        cnStakedKLAY,
-        'PeriodicStakingStats',
-      );
-    });
-
-    it('should be emitted after the debounce interval', async () => {
-      await printStats('initial state');
-      await cnStakedKLAY.for.alice.stake({ value: ETHER });
-      await printStats('after first stake');
-
-      await time.increase(3600 + 1);
-
-      await expect(cnStakedKLAY.for.alice.stake({ value: ETHER }))
-        .to.emit(cnStakedKLAY, 'PeriodicStakingStats')
-        .withArgs(2n * ETHER * PRECISION_MULTIPLIER, 2n * ETHER);
-    });
-  });
-
-  describe('#setPeriodicStakingStatsDebounceInterval()', () => {
-    it('should revert when called by non-owner', async () => {
-      await expect(cnStakedKLAY.connect(accounts.bob).setPeriodicStakingStatsDebounceInterval(0)).to
-        .be.reverted;
-    });
-
-    it('should be able to set the interval', async () => {
-      await cnStakedKLAY.for.deployer.setPeriodicStakingStatsDebounceInterval(60);
-
-      expect(await cnStakedKLAY.periodicStakingStatsDebounceInterval()).to.equal(60);
     });
   });
 });

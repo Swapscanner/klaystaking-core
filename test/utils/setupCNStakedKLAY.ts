@@ -1,6 +1,7 @@
 import { ethers } from 'hardhat';
 import { deployAccountsConnectedContract } from './accountsConnectedContract';
 import { CNStakedKLAYV2Test, ProxyStakedKLAYClaimCheck } from '../../typechain-types';
+import { makeEveryoneRich } from './makeEveryoneRich';
 
 export type AccountName =
   | 'deployer'
@@ -12,15 +13,9 @@ export type AccountName =
   | 'feeTo';
 
 export const setupCNStakedKLAY = async () => {
-  const allAccounts = await ethers.getSigners();
+  await makeEveryoneRich();
 
-  // let's make everyone rich
-  for (const account of allAccounts) {
-    await ethers.provider.send('hardhat_setBalance', [
-      account.address,
-      '0x' + (0x1c9c380000000n * 10n ** 18n).toString(16),
-    ]);
-  }
+  const allAccounts = await ethers.getSigners();
 
   const [deployer, foundationAdmin, cnAdmin, feeTo, misc, alice, bob, carol] = allAccounts;
   const accounts = { deployer, foundationAdmin, cnAdmin, feeTo, alice, bob, carol };
@@ -35,7 +30,7 @@ export const setupCNStakedKLAY = async () => {
     1,
     [Math.floor(Date.now() / 1000) + 10],
     [1],
-    // { gasLimit: "0x1c9c380000000" }
+    // { gasLimit: '0x1c9c380000000' },
   );
   await cnStaking.connect(foundationAdmin).setGCId(1);
   // await cnStaking.setStakingTracker(cnStaking.address, { from: accounts[1] });

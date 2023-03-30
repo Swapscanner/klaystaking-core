@@ -10,6 +10,7 @@ crytic-export
 
 # echidna corpus
 echidna_e2e_corpus
+echidna_e2e_erc20programmaticbalance_corpus
 
 # Hardhat files
 cache

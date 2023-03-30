@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity =0.8.18;
 
-import './klaytn/cnstaking/CnStakingContract.sol';
-import './ProxyStakedKLAY.sol';
+import '../klaytn/cnstaking/CnStakingContract.sol';
+import './CNStakingInterface.sol';
 
 /**
  * @dev
@@ -29,7 +29,7 @@ import './ProxyStakedKLAY.sol';
  *   1. Call CnStakingV2.submitUpdateRewardAddress(cn2.address)
  *   1. Call cn2.stake()
  */
-abstract contract CNStakedKLAY is ProxyStakedKLAY {
+abstract contract CNStakingV1Interface is CNStakingInterface {
   CnStakingContract public immutable cnStaking;
   uint256 private _unstaking;
 
