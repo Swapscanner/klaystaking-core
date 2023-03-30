@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { deployAccountsConnectedContract } from './accountsConnectedContract';
-import { CNStakedKLAYV2Test, ProxyStakedKLAYClaimCheck } from '../../typechain-types';
+import { CNStakedKLAYV2Mock, ProxyStakedKLAYClaimCheck } from '../../typechain-types';
 import { makeEveryoneRich } from './makeEveryoneRich';
 
 export type AccountName =
@@ -39,10 +39,10 @@ export const setupCNStakedKLAY = async () => {
   await cnStaking.depositLockupStakingAndInit({ value: '1' });
 
   // deploy contracts
-  const cnStakedKLAY = await deployAccountsConnectedContract<CNStakedKLAYV2Test, AccountName>({
+  const cnStakedKLAY = await deployAccountsConnectedContract<CNStakedKLAYV2Mock, AccountName>({
     accounts,
     defaultAccount: misc,
-    contract: 'CNStakedKLAYV2Test',
+    contract: 'CNStakedKLAYV2Mock',
     args: [feeTo.address, cnStaking.address],
   });
   await cnStakedKLAY.deployed();

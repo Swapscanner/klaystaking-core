@@ -1,3 +1,2 @@
-contracts/klaytn/**
 contracts/external/**
 contracts/ERC20VotesCustomBalance.sol

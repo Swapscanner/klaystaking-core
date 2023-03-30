@@ -3,7 +3,7 @@ pragma solidity =0.8.18;
 
 import '../libraries/TimestampStrings.sol';
 
-contract TimestampStringsTest {
+contract TimestampStringsMock {
   function toUTCString(uint256 timestamp) external pure returns (string memory) {
     return TimestampStrings.toUTCString(timestamp);
   }

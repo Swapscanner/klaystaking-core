@@ -33,6 +33,8 @@ abstract contract ProxyStakedKLAYUnstakeable is ProxyStakedKLAY {
    * @notice Unstakes the given amount of KLAY, staked by the sender, and mints a claim check.
    */
   function unstake(uint256 amount) external returns (uint256 tokenId) {
+    sweep();
+
     return _unstake(_msgSender(), _burnAmount(_msgSender(), amount));
   }
 
@@ -40,6 +42,8 @@ abstract contract ProxyStakedKLAYUnstakeable is ProxyStakedKLAY {
    * @notice Unstakes all KLAY, staked by the sender, and mints a claim check.
    */
   function unstakeAll() external returns (uint256 tokenId) {
+    sweep();
+
     return _unstake(_msgSender(), _burnShares(_msgSender(), sharesOf(_msgSender())));
   }
 
@@ -88,10 +92,11 @@ abstract contract ProxyStakedKLAYUnstakeable is ProxyStakedKLAY {
       // call CnStakingV2, which will revert on reentrancy.
       // slither-disable-next-line reentrancy-benign
       Address.sendValue(payable(claimCheckOwner), amount);
-      sweep();
     } else {
       revert InvalidState();
     }
+
+    sweep();
 
     claimCheck.burn(claimCheckTokenId);
   }
