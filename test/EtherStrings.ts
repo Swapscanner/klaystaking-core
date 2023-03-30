@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { useSnapshot } from './utils/useSnapshot';
-import { EtherStringsTest } from '../typechain-types';
+import { EtherStringsMock } from '../typechain-types';
 import { expect } from 'chai';
 import { randomBytes } from 'crypto';
 
@@ -19,11 +19,11 @@ function convertToEtherString(wei: bigint): [string, string] {
 }
 
 describe('EtherStrings', () => {
-  let etherStrings: EtherStringsTest;
+  let etherStrings: EtherStringsMock;
 
   useSnapshot(async () => {
-    const EtherStringsTest = await ethers.getContractFactory('EtherStringsTest');
-    etherStrings = await EtherStringsTest.deploy();
+    const EtherStringsMock = await ethers.getContractFactory('EtherStringsMock');
+    etherStrings = await EtherStringsMock.deploy();
     await etherStrings.deployed();
     return etherStrings;
   });

@@ -5,7 +5,16 @@ import '@nomiclabs/hardhat-web3';
 import 'solidity-coverage';
 
 const config: HardhatUserConfig = {
-  solidity: '0.8.18',
+  solidity: {
+    version: '0.8.18',
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 2 ** 32 - 1,
+      },
+      viaIR: process.env.DISABLE_IR ? false : true,
+    },
+  },
   networks: {
     hardhat: {
       gasPrice: 50000000000,

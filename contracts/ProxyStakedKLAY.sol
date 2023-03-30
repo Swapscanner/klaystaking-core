@@ -51,7 +51,7 @@ abstract contract ProxyStakedKLAY is
    *
    * @dev Emits a {Transfer} event with {from} set to the zero address (minting).
    */
-  function stake() external payable {
+  function stake() public payable {
     _sweepAndStake(_msgSender(), msg.value);
   }
 
@@ -128,13 +128,9 @@ abstract contract ProxyStakedKLAY is
     return stakedAmount - unstakingAmount + rewardAmount - _feeAmount(stakedAmount, rewardAmount);
   }
 
-  function _beforeTokenTransfer(
-    address from,
-    address to,
-    uint256 amount
-  ) internal virtual override {
+  function _transfer(address from, address to, uint256 amount) internal override {
     sweep();
-    super._beforeTokenTransfer(from, to, amount);
+    super._transfer(from, to, amount);
   }
 
   /// admin functions

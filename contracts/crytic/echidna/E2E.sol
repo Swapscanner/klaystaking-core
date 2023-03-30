@@ -4,8 +4,8 @@ pragma solidity =0.8.18;
 import 'hardhat/console.sol';
 
 import '@openzeppelin/contracts/proxy/utils/Initializable.sol';
-import '../..//klaytn/cnstakingv2/CnStakingV2.sol';
-import '../../test/CNStakedKLAYV2Test.sol';
+import '../../external/klaytn/cnstakingv2/CnStakingV2.sol';
+import '../../test/CNStakedKLAYV2Mock.sol';
 import '../../ProxyStakedKLAYClaimCheck.sol';
 
 contract AbstractAccount {
@@ -70,13 +70,13 @@ contract CNAdmin is Initializable {
 contract E2E {
   CNAdmin public cnAdmin = new CNAdmin();
   AbstractAccount public feeReceiver = new AbstractAccount();
-  CNStakedKLAYV2Test public cnStakedKLAY;
+  CNStakedKLAYV2Mock public cnStakedKLAY;
   ProxyStakedKLAYClaimCheck public claimCheck;
 
   constructor() payable {
     require(msg.value == 1, 'msg.value must be 1');
 
-    cnStakedKLAY = new CNStakedKLAYV2Test(address(feeReceiver), cnAdmin.cnStaking());
+    cnStakedKLAY = new CNStakedKLAYV2Mock(address(feeReceiver), cnAdmin.cnStaking());
 
     cnAdmin.initialize{value: 1}(address(cnStakedKLAY));
 

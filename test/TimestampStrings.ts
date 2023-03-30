@@ -1,14 +1,14 @@
 import { ethers } from 'hardhat';
 import { useSnapshot } from './utils/useSnapshot';
-import { TimestampStringsTest } from '../typechain-types';
+import { TimestampStringsMock } from '../typechain-types';
 import { expect } from 'chai';
 
 describe('TimestampStrings', () => {
-  let timestampStrings: TimestampStringsTest;
+  let timestampStrings: TimestampStringsMock;
 
   useSnapshot(async () => {
-    const TimestampStringsTest = await ethers.getContractFactory('TimestampStringsTest');
-    timestampStrings = await TimestampStringsTest.deploy();
+    const TimestampStringsMock = await ethers.getContractFactory('TimestampStringsMock');
+    timestampStrings = await TimestampStringsMock.deploy();
     await timestampStrings.deployed();
     return timestampStrings;
   });

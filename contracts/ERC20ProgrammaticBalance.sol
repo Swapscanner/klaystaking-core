@@ -59,6 +59,7 @@ abstract contract ERC20ProgrammaticBalance is ERC20VotesCustomBalance {
 
   function _burnAmount(address account, uint256 amount) internal returns (uint256 burnedAmount) {
     uint256 balance = balanceOf(account);
+    uint256 currentShares = _shares[account];
     // balance == amount comparison is valid way to burn all the shares when the amount is equals
     // to the user's balance. this is to mitigate any potential rounding errors.
     // balance < amount will cause revert with {InsufficientBalance} anyways.
@@ -66,8 +67,9 @@ abstract contract ERC20ProgrammaticBalance is ERC20VotesCustomBalance {
     return
       _burnShares(
         account,
+        currentShares,
         balance == amount
-          ? _shares[account]
+          ? currentShares
           : SharesMath.calculateShares(amount, _totalSupply(), _totalShares),
         amount
       );
@@ -75,11 +77,29 @@ abstract contract ERC20ProgrammaticBalance is ERC20VotesCustomBalance {
 
   function _burnShares(address account, uint256 shares) internal returns (uint256 burnedAmount) {
     return
-      _burnShares(account, shares, SharesMath.calculateAmount(shares, totalSupply(), _totalShares));
+      _burnShares(
+        account,
+        _shares[account],
+        shares,
+        SharesMath.calculateAmount(shares, totalSupply(), _totalShares)
+      );
   }
 
+  /**
+   * @dev Burns corresponding shares for the {account} for the {amount}.
+   * @param account The address to burn shares from.
+   * @param currentShares The current shares of the {account}.
+   * @param shares The amount of shares to burn.
+   * @param amount The amount of tokens to burn.
+   *
+   * NOTE: Followings are not checked in this function.
+   * Caller is responsible of providing a sane value:
+   * - {currentShares} MUST be equal to {sharesOf(account)}.
+   * - {shares} and {amount} should be in valid ratio.
+   */
   function _burnShares(
     address account,
+    uint256 currentShares,
     uint256 shares,
     uint256 amount
   ) private returns (uint256 burnedAmount) {
@@ -87,7 +107,6 @@ abstract contract ERC20ProgrammaticBalance is ERC20VotesCustomBalance {
 
     _beforeTokenTransfer(account, address(0), shares);
 
-    uint256 currentShares = _shares[account];
     if (currentShares < shares) revert InsufficientBalance();
     unchecked {
       _shares[account] = currentShares - shares;
@@ -171,7 +190,7 @@ abstract contract ERC20ProgrammaticBalance is ERC20VotesCustomBalance {
    * - {to} cannot be the zero address.
    * - {from} must have a balance of at least `amount`.
    */
-  function _transfer(address from, address to, uint256 amount) internal override {
+  function _transfer(address from, address to, uint256 amount) internal virtual override {
     if (from == address(0)) revert TransferAddressZero();
     if (to == address(0)) revert TransferAddressZero();
 

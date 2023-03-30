@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { time } from '@nomicfoundation/hardhat-network-helpers';
-import { CNStakedKLAYV2Test, CnStakingV2, ProxyStakedKLAYClaimCheck } from '../typechain-types';
+import { CNStakedKLAYV2Mock, CnStakingV2, ProxyStakedKLAYClaimCheck } from '../typechain-types';
 import { useSnapshot } from './utils/useSnapshot';
 import { useLogger } from './utils/useLogger';
 import { BigNumber, BigNumberish } from 'ethers';
@@ -21,7 +21,7 @@ describe('ProxyStakedKLAY', () => {
   let accounts: Accounts<AccountName>;
 
   let cnStaking: CnStakingV2;
-  let cnStakedKLAY: AccountsConnectedContract<CNStakedKLAYV2Test, AccountName>;
+  let cnStakedKLAY: AccountsConnectedContract<CNStakedKLAYV2Mock, AccountName>;
   let claimCheck: AccountsConnectedContract<ProxyStakedKLAYClaimCheck, AccountName>;
 
   let issueReward: (amount: BigNumberish) => Promise<TransactionResponse>;
