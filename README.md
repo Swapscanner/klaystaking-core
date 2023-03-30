@@ -1,6 +1,4 @@
-[![Swapscanner logo](https://swapscanner.io/swapscanner.svg)](https://swapscanner.io)
-
-# Swapscanner KLAY Staking Protocol
+# <picture><source media="(prefers-color-scheme: dark)" srcset="logo-dark.svg" /><img src="logo-light.svg" alt="Swapscanner" style="vertical-align:middle;height:1em" /></picture> KLAY Staking Protocol
 
 [![Lint](https://github.com/swapscanner/klaystaking-core/actions/workflows/lint.yml/badge.svg)](https://github.com/swapscanner/klaystaking-core/actions/workflows/lint.yml)
 [![Test](https://github.com/swapscanner/klaystaking-core/actions/workflows/test.yml/badge.svg)](https://github.com/swapscanner/klaystaking-core/actions/workflows/test.yml)
