@@ -1,0 +1,14 @@
+testMode: assertion
+coverage: true
+codeSize: 0x10000
+balanceAddr: 0xffffffffffffffffffff
+cryticArgs: [
+    '--solc-remaps',
+    '@openzeppelin=node_modules/@openzeppelin hardhat=node_modules/hardhat',
+    # '--solc-args',
+    # 'optimize optimize-runs=800 metadata-hash=none',
+  ]
+
+corpusDir: echidna_e2e_erc20programmaticbalance_corpus
+testLimit: 100000
+timeout: 3600 # 1 hour

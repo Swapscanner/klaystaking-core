@@ -7,6 +7,7 @@ import { expect } from 'chai';
 import { domainSeparator } from './utils/eip712';
 import { mine, time } from '@nomicfoundation/hardhat-network-helpers';
 import { batchInBlock } from './utils/txpool';
+import { makeEveryoneRich } from './utils/makeEveryoneRich';
 
 // Ported from https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.8.2/test/token/ERC20/extensions/ERC20Votes.test.js
 
@@ -38,15 +39,9 @@ describe('ERC20VotesCustomBalance', () => {
   const supply = 10000000000000000000000000n;
 
   useSnapshot(async () => {
-    const allAccounts = await ethers.getSigners();
+    await makeEveryoneRich();
 
-    // let's make everyone rich
-    for (const account of allAccounts) {
-      await ethers.provider.send('hardhat_setBalance', [
-        account.address,
-        '0x' + (0x1c9c380000000n * 10n ** 18n).toString(16),
-      ]);
-    }
+    const allAccounts = await ethers.getSigners();
 
     [holder, recipient, holderDelegatee, other1, other2] = allAccounts;
 

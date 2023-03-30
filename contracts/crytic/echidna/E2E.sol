@@ -76,10 +76,7 @@ contract E2E {
   constructor() payable {
     require(msg.value == 1, 'msg.value must be 1');
 
-    cnStakedKLAY = new CNStakedKLAYV2Test(
-      address(feeReceiver),
-      CnStakingContract(payable(address(cnAdmin.cnStaking())))
-    );
+    cnStakedKLAY = new CNStakedKLAYV2Test(address(feeReceiver), cnAdmin.cnStaking());
 
     cnAdmin.initialize{value: 1}(address(cnStakedKLAY));
 
@@ -196,7 +193,7 @@ contract E2E {
     uint256 amount;
     ProxyStakedKLAY.WithdrawalRequestState state;
     (, , state) = cnStakedKLAY.withdrawalRequestInfo(tokenId);
-    require(state == ProxyStakedKLAY.WithdrawalRequestState.Unknown, 'state must be Unknown');
+    require(state == CNStakingInterface.WithdrawalRequestState.Unknown, 'state must be Unknown');
 
     uint256 ethBalanceBefore = address(this).balance;
     uint256 tokenBalanceBefore = cnStakedKLAY.balanceOf(address(this));
@@ -207,7 +204,7 @@ contract E2E {
     cnStakedKLAY.cancel(tokenId);
 
     (, , state) = cnStakedKLAY.withdrawalRequestInfo(tokenId);
-    assert(state == ProxyStakedKLAY.WithdrawalRequestState.Cancelled);
+    assert(state == CNStakingInterface.WithdrawalRequestState.Cancelled);
 
     uint256 ethBalanceAfter = address(this).balance;
     uint256 tokenBalanceAfter = cnStakedKLAY.balanceOf(address(this));
@@ -228,7 +225,7 @@ contract E2E {
     uint256 amount;
     ProxyStakedKLAY.WithdrawalRequestState state;
     (amount, , state) = cnStakedKLAY.withdrawalRequestInfo(tokenId);
-    require(state == ProxyStakedKLAY.WithdrawalRequestState.Unknown, 'state must be Unknown');
+    require(state == CNStakingInterface.WithdrawalRequestState.Unknown, 'state must be Unknown');
 
     uint256 ethBalanceBefore = address(this).balance;
     uint256 tokenBalanceBefore = cnStakedKLAY.balanceOf(address(this));
@@ -249,15 +246,15 @@ contract E2E {
     uint256 totalShareAfter = cnStakedKLAY.totalShares();
 
     (amount, , state) = cnStakedKLAY.withdrawalRequestInfo(tokenId);
-    if (state == ProxyStakedKLAY.WithdrawalRequestState.Transferred) {
+    if (state == CNStakingInterface.WithdrawalRequestState.Transferred) {
       assert(ethBalanceAfter == ethBalanceBefore + amount);
-    } else if (state == ProxyStakedKLAY.WithdrawalRequestState.Cancelled) {
+    } else if (state == CNStakingInterface.WithdrawalRequestState.Cancelled) {
       assert(ethBalanceBefore == ethBalanceAfter);
       assert(tokenBalanceAfter >= tokenBalanceBefore + amount - 1);
       assert(totalSupplyAfter >= totalSupplyBefore + amount - 1);
       assert(shareAfter > shareBefore);
       assert(totalShareAfter > totalShareBefore);
-    } else if (state == ProxyStakedKLAY.WithdrawalRequestState.Unknown) {
+    } else if (state == CNStakingInterface.WithdrawalRequestState.Unknown) {
       assert(ethBalanceBefore == ethBalanceAfter);
       assert(tokenBalanceAfter == tokenBalanceBefore);
       assert(totalSupplyAfter == totalSupplyBefore);

@@ -10,6 +10,7 @@
     "test": "hardhat test",
     "slither": "docker build -t slither -f Dockerfiles/slither.Dockerfile . && docker run -it --rm slither .",
     "echidna:e2e": "yarn build && echidna contracts/crytic/echidna/E2E.sol --contract E2E --config contracts/crytic/echidna/E2E.config.yml",
+    "echidna:e2e-erc20-programmatic-balance": "yarn build && echidna contracts/crytic/echidna/E2E_ERC20ProgrammaticBalance.sol --contract E2E_ERC20ProgrammaticBalance --config contracts/crytic/echidna/E2E_ERC20ProgrammaticBalance.config.yml",
     "echidna": "yarn echidna:e2e",
     "gas-report": "env REPORT_GAS=true yarn test",
     "coverage": "hardhat coverage",
