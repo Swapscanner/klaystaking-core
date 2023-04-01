@@ -1,0 +1,51 @@
+name: MythX
+
+on:
+  workflow_dispatch:
+
+jobs:
+  mythx:
+    name: Submit to MythX
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up environment
+        uses: ./.github/actions/setup
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Install pip3
+        run: |
+          python -m pip install --upgrade pip
+
+      - name: Install MythX CLI
+        run: |
+          pip3 install mythx-cli
+
+      - name: Install solc-select
+        run: |
+          pip3 install solc-select
+
+      - name: Install solc 0.8.18
+        run: |
+          solc-select install 0.8.18
+          solc-select use 0.8.18
+
+      - name: Submit code to MythX
+        run: |
+          mythx --api-key ${{ secrets.MYTHX_API_KEY }} \
+            --yes \
+            analyze \
+            --mode deep \
+            --async \
+            --create-group \
+            --group-name "@swapscanner/klaystaking-core@${{ github.sha }}" \
+            --solc-version 0.8.18 \
+            --check-properties \
+            contracts/crytic/echidna/E2E.sol --include E2E \
+            contracts/crytic/echidna/E2E_ERC20ProgrammaticBalance.sol --include E2E_ERC20ProgrammaticBalance
