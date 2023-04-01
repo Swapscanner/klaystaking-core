@@ -41,7 +41,7 @@ jobs:
           mythx --api-key ${{ secrets.MYTHX_API_KEY }} \
             --yes \
             analyze \
-            --remap-import "@openzeppelin/=$(pwd)/node_modules/@openzeppelin/ hardhat/=$(pwd)/node_modules/hardhat/"
+            --remap-import "@openzeppelin/=$(pwd)/node_modules/@openzeppelin/ hardhat/=$(pwd)/node_modules/hardhat/" \
             --mode deep \
             --async \
             --create-group \
