@@ -133,7 +133,11 @@ contract ProxyStakedKLAYClaimCheck is IProxyStakedKLAYClaimCheck, ERC721Enumerab
       _svgTitle,
       '</text><text x="20" y="98">KLAY #',
       tokenIdString,
-      '</text></g>',
+      '</text></g>'
+    );
+
+    svg = abi.encodePacked(
+      svg,
       _tokenStateSVG(tokenState),
       '<g class="bold"><text x="20" y="157">',
       valueIntegerString,
