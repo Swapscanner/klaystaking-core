@@ -4,6 +4,7 @@
 [![Test](https://github.com/swapscanner/klaystaking-core/actions/workflows/test.yml/badge.svg)](https://github.com/swapscanner/klaystaking-core/actions/workflows/test.yml)
 [![Coverage](https://github.com/swapscanner/klaystaking-core/actions/workflows/coverage.yml/badge.svg)](https://github.com/swapscanner/klaystaking-core/actions/workflows/coverage.yml)
 [![Slither](https://github.com/swapscanner/klaystaking-core/actions/workflows/slither.yml/badge.svg)](https://github.com/swapscanner/klaystaking-core/actions/workflows/slither.yml)
+[![MythX](https://github.com/swapscanner/klaystaking-core/actions/workflows/mythx.yml/badge.svg)](https://github.com/swapscanner/klaystaking-core/actions/workflows/mythx.yml)
 [![codecov](https://codecov.io/github/swapscanner/klaystaking-core/branch/main/graph/badge.svg?token=V4LLJJ86VX)](https://codecov.io/gh/swapscanner/klaystaking-core)
 
 This repository contains the core smart contracts and their tests for [Swapscanner]'s [$KLAY] staking protocol.
