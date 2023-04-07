@@ -64,6 +64,6 @@ abstract contract FeeCalculator {
   }
 
   function _calculateFee(uint256 amount) internal view returns (uint256 fee) {
-    return Math.mulDiv(amount, feeNumerator, feeDenominator, Math.Rounding.Up);
+    return Math.mulDiv(amount, feeNumerator, feeDenominator);
   }
 }
