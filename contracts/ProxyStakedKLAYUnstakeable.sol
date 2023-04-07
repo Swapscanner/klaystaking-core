@@ -81,6 +81,8 @@ abstract contract ProxyStakedKLAYUnstakeable is ProxyStakedKLAY {
       claimCheck.getApproved(claimCheckTokenId) != _msgSender()
     ) revert PermissionDenied();
 
+    claimCheck.burn(claimCheckTokenId);
+
     uint256 amount;
     WithdrawalRequestState state;
     (amount, , state) = withdrawalRequestInfo(claimCheckTokenId);
@@ -97,7 +99,5 @@ abstract contract ProxyStakedKLAYUnstakeable is ProxyStakedKLAY {
     }
 
     sweep();
-
-    claimCheck.burn(claimCheckTokenId);
   }
 }
