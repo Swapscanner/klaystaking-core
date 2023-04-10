@@ -15,6 +15,7 @@ import './ProxyStakedKLAYClaimCheck.sol';
  */
 abstract contract ProxyStakedKLAYUnstakeable is ProxyStakedKLAY {
   error AlreadyInitialized();
+  error InvalidAddress();
 
   ProxyStakedKLAYClaimCheck public claimCheck;
 
@@ -26,6 +27,7 @@ abstract contract ProxyStakedKLAYUnstakeable is ProxyStakedKLAY {
    */
   function setClaimCheck(ProxyStakedKLAYClaimCheck newClaimCheck) external onlyOwner {
     if (address(claimCheck) != address(0)) revert AlreadyInitialized();
+    if (address(newClaimCheck) == address(0)) revert InvalidAddress();
     claimCheck = newClaimCheck;
   }
 
