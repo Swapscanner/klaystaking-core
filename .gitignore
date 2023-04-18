@@ -15,6 +15,7 @@ echidna_e2e_erc20programmaticbalance_corpus
 # Hardhat files
 cache
 artifacts
+build
 
 # vscode
 .vscode/*
