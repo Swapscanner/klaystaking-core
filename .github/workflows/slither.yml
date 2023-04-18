@@ -14,6 +14,8 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v3
+      - name: Set up environment
+        uses: ./.github/actions/setup
       - uses: crytic/slither-action@v0.3.0
         id: slither
         with:
