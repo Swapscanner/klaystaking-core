@@ -10,11 +10,7 @@ WORKDIR /repo
 COPY package.json /repo/package.json
 COPY yarn.lock /repo/yarn.lock
 
-RUN mkdir -p scripts/git/hooks && \
-  mkdir -p .git/hooks && \
-  echo '' > scripts/git/hooks/pre-commit.sh && \
-  chmod +x scripts/git/hooks/pre-commit.sh && \
-  yarn
+RUN yarn install --frozen-lockfile
 
 COPY . /repo
 
