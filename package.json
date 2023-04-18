@@ -18,8 +18,6 @@
     "echidna:e2e-erc20-programmatic-balance": "yarn build && echidna contracts/crytic/echidna/E2E_ERC20ProgrammaticBalance.sol --contract E2E_ERC20ProgrammaticBalance --config contracts/crytic/echidna/E2E_ERC20ProgrammaticBalance.config.yml",
     "gas-report": "env REPORT_GAS=true yarn test",
     "coverage": "DISABLE_IR=yep hardhat coverage",
-    "postinstall": "ln -sf \"$(pwd)/scripts/git/hooks/pre-commit.sh\" ./.git/hooks/pre-commit",
-    "precommit": "yarn lint && yarn test",
     "lint": "yarn lint:js && yarn lint:sol",
     "lint:fix": "yarn lint:js:fix && yarn lint:sol:fix",
     "lint:js": "prettier --loglevel warn --ignore-path .gitignore '**/*.{js,ts}' --check && eslint --ignore-path .gitignore .",
@@ -27,8 +25,7 @@
     "lint:sol": "prettier --loglevel warn '{contracts,test}/**/*.sol' --check && solhint '{contracts,test}/**/*.sol'",
     "lint:sol:fix": "prettier --loglevel warn '{contracts,test}/**/*.sol' --write",
     "clean": "hardhat clean && rimraf build",
-    "prepare": "yarn clean && yarn compile",
-    "prepack": "scripts/prepack.sh"
+    "prepack": "yarn clean && yarn compile && scripts/prepack.sh"
   },
   "devDependencies": {
     "@ethersproject/abi": "^5.4.7",
@@ -64,6 +61,6 @@
     "typescript": ">=4.5.0"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.8.2"
+    "@openzeppelin/contracts": "^4.8.3"
   }
 }
