@@ -142,6 +142,8 @@ abstract contract ProxyStakedKLAY is
     uint16 newFeeNumerator,
     uint16 newFeeDenominator
   ) public override onlyOwner {
+    sweep();
+
     super.setFee(newFeeTo, newFeeNumerator, newFeeDenominator);
   }
 
