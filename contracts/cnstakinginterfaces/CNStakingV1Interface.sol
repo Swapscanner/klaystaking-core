@@ -33,8 +33,8 @@ abstract contract CNStakingV1Interface is CNStakingInterface {
   CnStakingContract public immutable cnStaking;
   uint256 private _unstaking;
 
-  constructor(CnStakingContract _cnStaking) {
-    cnStaking = _cnStaking;
+  constructor(CnStakingContract newCnStaking) {
+    cnStaking = newCnStaking;
   }
 
   function withdrawalRequestTTL() public view virtual override returns (uint256) {
@@ -62,6 +62,14 @@ abstract contract CNStakingV1Interface is CNStakingInterface {
     } else if (_state == CnStakingContract.WithdrawalStakingState.Canceled) {
       state = WithdrawalRequestState.Cancelled;
     }
+  }
+
+  function _cnStaking() internal view override returns (address) {
+    return address(cnStaking);
+  }
+
+  function _acceptRewardAddress() internal virtual override {
+    // CNStakingV1 does not mandate to accept reward address.
   }
 
   function _nextWithdrawalRequestId() internal view virtual override returns (uint256) {

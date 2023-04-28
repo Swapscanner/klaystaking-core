@@ -29,8 +29,37 @@ contract FoundationAdmin is Initializable {
   receive() external payable {}
 }
 
+contract CnStakingV2CanSendKlay is CnStakingV2 {
+  constructor(
+    address _contractValidator,
+    address _nodeId,
+    address _rewardAddress,
+    address[] memory _cnAdminlist,
+    uint256 _requirement,
+    uint256[] memory _unlockTime,
+    uint256[] memory _unlockAmount
+  )
+    CnStakingV2(
+      _contractValidator,
+      _nodeId,
+      _rewardAddress,
+      _cnAdminlist,
+      _requirement,
+      _unlockTime,
+      _unlockAmount
+    )
+  {}
+
+  receive() external payable override {}
+
+  function send(address payable recipient, uint256 amount) external returns (bool) {
+    (bool success, ) = recipient.call{value: amount}('');
+    return success;
+  }
+}
+
 contract CNAdmin is Initializable {
-  CnStakingV2 public immutable cnStaking;
+  CnStakingV2CanSendKlay public immutable cnStaking;
 
   constructor() {
     FoundationAdmin foundationAdmin = new FoundationAdmin();
@@ -44,7 +73,7 @@ contract CNAdmin is Initializable {
     uint256[] memory unlockAmount = new uint256[](1);
     unlockAmount[0] = 1;
 
-    cnStaking = new CnStakingV2(
+    cnStaking = new CnStakingV2CanSendKlay(
       address(foundationAdmin),
       address(foundationAdmin),
       address(foundationAdmin),
@@ -108,8 +137,10 @@ contract E2E {
   }
 
   function testIssueReward() public payable {
-    (bool sent, ) = payable(cnStakedKLAY).call{value: msg.value}('');
-    assert(sent);
+    (bool success, ) = payable(address(cnAdmin.cnStaking())).call{value: msg.value}('');
+    require(success);
+    success = cnAdmin.cnStaking().send(payable(address(cnStakedKLAY)), msg.value);
+    assert(success);
   }
 
   function testSweepReward() public {

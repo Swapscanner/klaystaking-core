@@ -790,7 +790,9 @@ contract CnStakingV2 is ICnStakingV2 {
     ///
     /// Note that This fallback only accept transactions with empty calldata.
     /// contract calls with wrong function signature is reverted despite this fallback.
-    receive() external payable override
+    ///
+    /// @dev SWAPSCANNER NOTE: This function is NOT `virtual` on the actual contract.
+    receive() external virtual payable override
     afterInit() {
         stakeKlay();
     }

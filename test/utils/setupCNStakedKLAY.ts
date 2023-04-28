@@ -1,6 +1,11 @@
 import { ethers } from 'hardhat';
 import { deployAccountsConnectedContract } from './accountsConnectedContract';
-import { CNStakedKLAYV2Mock, ProxyStakedKLAYClaimCheck } from '../../typechain-types';
+import {
+  AddressBookMock,
+  CNStakedKLAYV2Mock,
+  CnStakingV2,
+  ProxyStakedKLAYClaimCheck,
+} from '../../typechain-types';
 import { makeEveryoneRich } from './makeEveryoneRich';
 
 export type AccountName =
@@ -21,21 +26,30 @@ export const setupCNStakedKLAY = async () => {
   const accounts = { deployer, foundationAdmin, cnAdmin, feeTo, alice, bob, carol };
 
   // deploy contracts
-  const CnStakingV2 = await ethers.getContractFactory('CnStakingV2');
-  const cnStaking = await CnStakingV2.deploy(
-    foundationAdmin.address,
-    foundationAdmin.address,
-    foundationAdmin.address,
-    [cnAdmin.address],
-    1,
-    [Math.floor(Date.now() / 1000) + 10],
-    [1],
-    // { gasLimit: '0x1c9c380000000' },
-  );
-  await cnStaking.connect(foundationAdmin).setGCId(1);
+  const AddressBookMock = await ethers.getContractFactory('AddressBookMock');
+  await ethers.provider.send('hardhat_setCode', [
+    '0x0000000000000000000000000000000000000400',
+    AddressBookMock.bytecode,
+  ]);
+
+  const cnStaking = await deployAccountsConnectedContract<CnStakingV2, AccountName>({
+    accounts,
+    defaultAccount: misc,
+    contract: 'CnStakingV2',
+    args: [
+      foundationAdmin.address,
+      foundationAdmin.address,
+      foundationAdmin.address,
+      [cnAdmin.address],
+      1,
+      [Math.floor(Date.now() / 1000) + 10],
+      [1],
+    ],
+  });
+  await cnStaking.for.foundationAdmin.setGCId(1);
   // await cnStaking.setStakingTracker(cnStaking.address, { from: accounts[1] });
-  await cnStaking.connect(foundationAdmin).reviewInitialConditions();
-  await cnStaking.connect(cnAdmin).reviewInitialConditions();
+  await cnStaking.for.foundationAdmin.reviewInitialConditions();
+  await cnStaking.for.cnAdmin.reviewInitialConditions();
   await cnStaking.depositLockupStakingAndInit({ value: '1' });
 
   // deploy contracts
@@ -56,7 +70,7 @@ export const setupCNStakedKLAY = async () => {
 
   // configure contracts
   await cnStakedKLAY.for.deployer.setClaimCheck(claimCheck.address);
-  await cnStaking.connect(cnAdmin).submitAddAdmin(cnStakedKLAY.address);
+  await cnStaking.for.cnAdmin.submitAddAdmin(cnStakedKLAY.address);
 
   return { allAccounts, accounts, cnStaking, cnStakedKLAY, claimCheck, misc };
 };

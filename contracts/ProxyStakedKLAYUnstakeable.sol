@@ -14,7 +14,7 @@ import './ProxyStakedKLAYClaimCheck.sol';
  * Minted {ProxyStakedKLAYClaimCheck} token can be claimed or cancelled through this contract.
  */
 abstract contract ProxyStakedKLAYUnstakeable is ProxyStakedKLAY {
-  error AlreadyInitialized();
+  error InvalidSender();
 
   ProxyStakedKLAYClaimCheck public claimCheck;
 
@@ -99,5 +99,9 @@ abstract contract ProxyStakedKLAYUnstakeable is ProxyStakedKLAY {
     }
 
     sweep();
+  }
+
+  receive() external payable virtual {
+    if (_msgSender() != _cnStaking()) revert InvalidSender();
   }
 }
