@@ -1,16 +1,10 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { time } from '@nomicfoundation/hardhat-network-helpers';
-import {
-  CNStakedKLAYV2,
-  CNStakedKLAYV2Mock,
-  CnStakingV2,
-  ProxyStakedKLAYClaimCheck,
-} from '../typechain-types';
+import { CNStakedKLAYV2Mock, CnStakingV2, ProxyStakedKLAYClaimCheck } from '../typechain-types';
 import { useSnapshot } from './utils/useSnapshot';
 import { useLogger } from './utils/useLogger';
 import { BigNumber, BigNumberish } from 'ethers';
-import { TransactionResponse } from '@ethersproject/providers';
 import { expectEtherBalanceOf } from './utils/balanceAssertions';
 import { Accounts } from './utils/accounts';
 import { AccountsConnectedContract } from './utils/accountsConnectedContract';
