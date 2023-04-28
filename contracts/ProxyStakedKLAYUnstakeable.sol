@@ -73,6 +73,8 @@ abstract contract ProxyStakedKLAYUnstakeable is ProxyStakedKLAY {
     _processWithdrawalRequest(claimCheckTokenId);
   }
 
+  // This function is reentrancy-safe since claimCheck.burn will revert on reentrancy.
+  // slither-disable-next-line reentrancy-benign
   function _processWithdrawalRequest(uint256 claimCheckTokenId) private {
     address claimCheckOwner = claimCheck.ownerOf(claimCheckTokenId);
     if (

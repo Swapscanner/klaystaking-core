@@ -13,8 +13,8 @@ import './CNStakingV1Interface.sol';
  */
 abstract contract CNStakingV2Interface is CNStakingV1Interface {
   constructor(
-    CnStakingV2 _cnStaking
-  ) CNStakingV1Interface(CnStakingContract(payable(address(_cnStaking)))) {}
+    CnStakingV2 newCnStaking
+  ) CNStakingV1Interface(CnStakingContract(payable(address(newCnStaking)))) {}
 
   function withdrawalRequestTTL() public view override returns (uint256) {
     return CnStakingV2(payable(address(cnStaking))).STAKE_LOCKUP();

@@ -16,6 +16,6 @@ contract CNStakedKLAYV1 is ProxyStakedKLAYUnstakeable, CNStakingV1Interface {
     string memory name,
     string memory symbol,
     address _feeTo,
-    CnStakingContract _cnStaking
-  ) CNStakingV1Interface(_cnStaking) ProxyStakedKLAY(_feeTo, name, symbol) {}
+    CnStakingContract newCnStaking
+  ) CNStakingV1Interface(newCnStaking) ProxyStakedKLAY(_feeTo, name, symbol) {}
 }

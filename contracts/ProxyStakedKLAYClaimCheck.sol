@@ -19,9 +19,12 @@ import './ProxyStakedKLAY.sol';
  * @author Swapscanner
  * @notice Claim check represents unstaking requests for {ProxyStakedKLAYUnstakeable}.
  *
- * This contract should be deployed by an EOA in order to be registered and managed on OpenSea, ...
+ * This contract should be Ownable in order to be registered and managed on OpenSea, ...
+ * Owner will not be able to do anything except for transferring ownership.
  */
 contract ProxyStakedKLAYClaimCheck is IProxyStakedKLAYClaimCheck, ERC721Enumerable, Ownable {
+  error NotStakedKLAY();
+
   ProxyStakedKLAY public immutable staking;
   string private _svgTitle;
 
@@ -33,14 +36,18 @@ contract ProxyStakedKLAYClaimCheck is IProxyStakedKLAYClaimCheck, ERC721Enumerab
   ) ERC721(name, symbol) Ownable() {
     staking = _staking;
     _svgTitle = svgTitle_;
-    transferOwnership(address(_staking));
   }
 
-  function mint(address to, uint256 tokenId) external onlyOwner {
+  modifier onlyStaking() {
+    if (_msgSender() != address(staking)) revert NotStakedKLAY();
+    _;
+  }
+
+  function mint(address to, uint256 tokenId) external onlyStaking {
     _mint(to, tokenId);
   }
 
-  function burn(uint256 tokenId) external onlyOwner {
+  function burn(uint256 tokenId) external onlyStaking {
     _burn(tokenId);
   }
 
