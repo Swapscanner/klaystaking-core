@@ -38,6 +38,8 @@ abstract contract ProxyStakedKLAY is
   ERC20ProgrammaticBalanceStats,
   Ownable
 {
+  error AlreadyInitialized();
+
   constructor(
     address _feeTo,
     string memory name,
@@ -140,6 +142,12 @@ abstract contract ProxyStakedKLAY is
     uint16 newFeeNumerator,
     uint16 newFeeDenominator
   ) public override onlyOwner {
+    sweep();
+
     super.setFee(newFeeTo, newFeeNumerator, newFeeDenominator);
+  }
+
+  function acceptRewardAddress() external onlyOwner {
+    _acceptRewardAddress();
   }
 }

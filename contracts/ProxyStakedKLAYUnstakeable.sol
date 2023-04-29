@@ -14,7 +14,7 @@ import './ProxyStakedKLAYClaimCheck.sol';
  * Minted {ProxyStakedKLAYClaimCheck} token can be claimed or cancelled through this contract.
  */
 abstract contract ProxyStakedKLAYUnstakeable is ProxyStakedKLAY {
-  error AlreadyInitialized();
+  error InvalidSender();
 
   ProxyStakedKLAYClaimCheck public claimCheck;
 
@@ -73,6 +73,8 @@ abstract contract ProxyStakedKLAYUnstakeable is ProxyStakedKLAY {
     _processWithdrawalRequest(claimCheckTokenId);
   }
 
+  // This function is reentrancy-safe since claimCheck.burn will revert on reentrancy.
+  // slither-disable-next-line reentrancy-benign
   function _processWithdrawalRequest(uint256 claimCheckTokenId) private {
     address claimCheckOwner = claimCheck.ownerOf(claimCheckTokenId);
     if (
@@ -99,5 +101,9 @@ abstract contract ProxyStakedKLAYUnstakeable is ProxyStakedKLAY {
     }
 
     sweep();
+  }
+
+  receive() external payable virtual {
+    if (_msgSender() != _cnStaking()) revert InvalidSender();
   }
 }

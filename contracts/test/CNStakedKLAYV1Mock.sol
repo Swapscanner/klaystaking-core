@@ -15,6 +15,4 @@ contract CNStakedKLAYV1Mock is CNStakedKLAYV1 {
     address _feeTo,
     CnStakingContract _cnStaking
   ) CNStakedKLAYV1('CNStakedKLAYV1Mock', 'msKLAY', _feeTo, _cnStaking) {}
-
-  receive() external payable {}
 }

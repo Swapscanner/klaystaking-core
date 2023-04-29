@@ -29,8 +29,37 @@ contract FoundationAdmin is Initializable {
   receive() external payable {}
 }
 
+contract CnStakingV2CanSendKlay is CnStakingV2 {
+  constructor(
+    address _contractValidator,
+    address _nodeId,
+    address _rewardAddress,
+    address[] memory _cnAdminlist,
+    uint256 _requirement,
+    uint256[] memory _unlockTime,
+    uint256[] memory _unlockAmount
+  )
+    CnStakingV2(
+      _contractValidator,
+      _nodeId,
+      _rewardAddress,
+      _cnAdminlist,
+      _requirement,
+      _unlockTime,
+      _unlockAmount
+    )
+  {}
+
+  receive() external payable override {}
+
+  function send(address payable recipient, uint256 amount) external returns (bool) {
+    (bool success, ) = recipient.call{value: amount}('');
+    return success;
+  }
+}
+
 contract CNAdmin is Initializable {
-  CnStakingV2 public immutable cnStaking;
+  CnStakingV2CanSendKlay public immutable cnStaking;
 
   constructor() {
     FoundationAdmin foundationAdmin = new FoundationAdmin();
@@ -44,7 +73,7 @@ contract CNAdmin is Initializable {
     uint256[] memory unlockAmount = new uint256[](1);
     unlockAmount[0] = 1;
 
-    cnStaking = new CnStakingV2(
+    cnStaking = new CnStakingV2CanSendKlay(
       address(foundationAdmin),
       address(foundationAdmin),
       address(foundationAdmin),
@@ -99,6 +128,10 @@ contract E2E {
 
   receive() external payable {}
 
+  function setFee(address newFeeTo, uint16 newFeeNumerator, uint16 newFeeDenominator) public {
+    cnStakedKLAY.setFee(newFeeTo, newFeeNumerator, newFeeDenominator);
+  }
+
   function testTotalShares(address account) public view {
     assert(cnStakedKLAY.sharesOf(account) <= cnStakedKLAY.totalShares());
   }
@@ -108,8 +141,10 @@ contract E2E {
   }
 
   function testIssueReward() public payable {
-    (bool sent, ) = payable(cnStakedKLAY).call{value: msg.value}('');
-    assert(sent);
+    (bool success, ) = payable(address(cnAdmin.cnStaking())).call{value: msg.value}('');
+    require(success);
+    success = cnAdmin.cnStaking().send(payable(address(cnStakedKLAY)), msg.value);
+    assert(success);
   }
 
   function testSweepReward() public {
@@ -130,6 +165,7 @@ contract E2E {
   }
 
   function testStake() public payable {
+    uint256 beforeShare = cnStakedKLAY.sharesOf(address(this));
     uint256 beforeBalance = cnStakedKLAY.balanceOf(address(this));
     uint256 amount = msg.value;
 
@@ -137,11 +173,45 @@ contract E2E {
       assert(false);
     }
 
+    uint256 afterShare = cnStakedKLAY.sharesOf(address(this));
     uint256 afterBalance = cnStakedKLAY.balanceOf(address(this));
+
     assert(afterBalance >= beforeBalance + amount - 1);
+    if (msg.value > 1) {
+      assert(afterShare > beforeShare);
+    }
+  }
+
+  function testStakeWithSweep() public payable {
+    cnStakedKLAY.sweep();
+
+    uint256 beforeShare = cnStakedKLAY.sharesOf(address(this));
+    uint256 beforeBalance = cnStakedKLAY.balanceOf(address(this));
+    uint256 amount = msg.value;
+    uint256 beforeTotalShares = cnStakedKLAY.totalShares();
+    uint256 beforeTotalSupply = cnStakedKLAY.totalSupply();
+
+    try cnStakedKLAY.stake{value: amount}() {} catch {
+      assert(false);
+    }
+
+    uint256 afterShare = cnStakedKLAY.sharesOf(address(this));
+    uint256 afterBalance = cnStakedKLAY.balanceOf(address(this));
+    uint256 afterTotalShares = cnStakedKLAY.totalShares();
+    uint256 afterTotalSupply = cnStakedKLAY.totalSupply();
+
+    assert(afterBalance >= beforeBalance + amount - 1);
+    assert(afterTotalSupply >= beforeTotalSupply + amount - 1);
+    if (msg.value > 1) {
+      assert(afterShare > beforeShare);
+      assert(afterTotalShares > beforeTotalShares);
+    } else {
+      assert(afterTotalShares >= beforeTotalShares);
+    }
   }
 
   function testStakeFor() public payable {
+    uint256 beforeShare = cnStakedKLAY.sharesOf(address(this));
     uint256 beforeBalance = cnStakedKLAY.balanceOf(address(this));
     uint256 amount = msg.value;
 
@@ -149,11 +219,16 @@ contract E2E {
       assert(false);
     }
 
+    uint256 afterShare = cnStakedKLAY.sharesOf(address(this));
     uint256 afterBalance = cnStakedKLAY.balanceOf(address(this));
     assert(afterBalance >= beforeBalance + amount - 1);
+    if (msg.value > 1) {
+      assert(afterShare > beforeShare);
+    }
   }
 
   function testUnstake(uint256 amount) public {
+    uint256 beforeShare = cnStakedKLAY.sharesOf(address(this));
     uint256 beforeBalance = cnStakedKLAY.balanceOf(address(this));
     require(amount <= beforeBalance, 'amount must be less than balance');
     require(amount > 0, 'amount must be greater than 0');
@@ -164,8 +239,36 @@ contract E2E {
       assert(desiredSelector == receivedSelector);
     }
 
+    uint256 afterShare = cnStakedKLAY.sharesOf(address(this));
     uint256 afterBalance = cnStakedKLAY.balanceOf(address(this));
-    assert(afterBalance < beforeBalance);
+    assert(afterShare < beforeShare);
+    assert(afterBalance <= beforeBalance - amount + 1);
+  }
+
+  function testUnstakeWithSweep(uint256 amount) public {
+    cnStakedKLAY.sweep();
+
+    uint256 beforeShare = cnStakedKLAY.sharesOf(address(this));
+    uint256 beforeBalance = cnStakedKLAY.balanceOf(address(this));
+    uint256 beforeTotalShares = cnStakedKLAY.totalShares();
+    uint256 beforeTotalSupply = cnStakedKLAY.totalSupply();
+    require(amount <= beforeBalance, 'amount must be less than balance');
+    require(amount > 0, 'amount must be greater than 0');
+
+    try cnStakedKLAY.unstake(amount) {} catch (bytes memory reason) {
+      bytes4 desiredSelector = bytes4(keccak256(bytes('AmountTooSmall()')));
+      bytes4 receivedSelector = bytes4(reason);
+      assert(desiredSelector == receivedSelector);
+    }
+
+    uint256 afterShare = cnStakedKLAY.sharesOf(address(this));
+    uint256 afterBalance = cnStakedKLAY.balanceOf(address(this));
+    uint256 afterTotalShares = cnStakedKLAY.totalShares();
+    uint256 afterTotalSupply = cnStakedKLAY.totalSupply();
+    assert(afterShare < beforeShare);
+    assert(afterBalance <= beforeBalance - amount + 1);
+    assert(afterTotalShares < beforeTotalShares);
+    assert(afterTotalSupply <= beforeTotalSupply - amount + 1);
   }
 
   function testUnstakeAll() public {
@@ -179,7 +282,80 @@ contract E2E {
     }
 
     uint256 afterBalance = cnStakedKLAY.balanceOf(address(this));
+    uint256 afterShare = cnStakedKLAY.sharesOf(address(this));
     assert(afterBalance == 0);
+    assert(afterShare == 0);
+  }
+
+  function testTransfer(uint256 amount, address toAccount) public {
+    require(address(this) != address(0), 'this must not be 0x0');
+    require(toAccount != address(0), 'toAccount must not be 0x0');
+    require(toAccount != address(this), 'toAccount must not be this');
+
+    uint256 beforeFromBalance = cnStakedKLAY.balanceOf(address(this));
+    uint256 beforeFromShare = cnStakedKLAY.sharesOf(address(this));
+    require(amount <= beforeFromBalance, 'amount must be less than balance');
+    require(amount > 0, 'amount must be greater than 0');
+    uint256 beforeToBalance = cnStakedKLAY.balanceOf(toAccount);
+    uint256 beforeToShare = cnStakedKLAY.sharesOf(toAccount);
+
+    try cnStakedKLAY.transfer(toAccount, amount) {} catch (bytes memory reason) {
+      bytes4 desiredSelector = bytes4(keccak256('AmountTooSmall()'));
+      bytes4 receivedSelector = bytes4(reason);
+      assert(desiredSelector == receivedSelector);
+    }
+
+    uint256 afterFromBalance = cnStakedKLAY.balanceOf(address(this));
+    uint256 afterFromShare = cnStakedKLAY.sharesOf(address(this));
+    uint256 afterToBalance = cnStakedKLAY.balanceOf(toAccount);
+    uint256 afterToShare = cnStakedKLAY.sharesOf(toAccount);
+
+    assert(afterFromBalance <= beforeFromBalance - amount + 1);
+    assert(afterFromShare < beforeFromShare);
+    assert(afterToBalance >= beforeToBalance + amount - 1);
+    assert(afterToShare > beforeToShare);
+    if (toAccount == cnStakedKLAY.feeTo()) {
+      assert(beforeFromShare + beforeToShare <= afterFromShare + afterToShare);
+    } else {
+      assert(beforeFromShare + beforeToShare == afterFromShare + afterToShare);
+    }
+  }
+
+  function testTransferWithSweep(uint256 amount, address toAccount) public {
+    require(address(this) != address(0), 'this must not be 0x0');
+    require(toAccount != address(0), 'toAccount must not be 0x0');
+    require(toAccount != address(this), 'toAccount must not be this');
+
+    // sweep reward to prevent totalShares, totalSupply from being changed
+    cnStakedKLAY.sweep();
+
+    uint256 beforeFromBalance = cnStakedKLAY.balanceOf(address(this));
+    uint256 beforeFromShare = cnStakedKLAY.sharesOf(address(this));
+    require(amount <= beforeFromBalance, 'amount must be less than balance');
+    require(amount > 0, 'amount must be greater than 0');
+    uint256 beforeToBalance = cnStakedKLAY.balanceOf(toAccount);
+    uint256 beforeToShare = cnStakedKLAY.sharesOf(toAccount);
+    uint256 beforeTotalShares = cnStakedKLAY.totalShares();
+    uint256 beforeTotalSupply = cnStakedKLAY.totalSupply();
+
+    try cnStakedKLAY.transfer(toAccount, amount) {} catch {
+      assert(false);
+    }
+
+    uint256 afterFromBalance = cnStakedKLAY.balanceOf(address(this));
+    uint256 afterFromShare = cnStakedKLAY.sharesOf(address(this));
+    uint256 afterToBalance = cnStakedKLAY.balanceOf(toAccount);
+    uint256 afterToShare = cnStakedKLAY.sharesOf(toAccount);
+    uint256 afterTotalShares = cnStakedKLAY.totalShares();
+    uint256 afterTotalSupply = cnStakedKLAY.totalSupply();
+
+    assert(afterFromBalance <= beforeFromBalance - amount + 1);
+    assert(afterFromShare < beforeFromShare);
+    assert(afterToBalance >= beforeToBalance + amount - 1);
+    assert(afterToShare > beforeToShare);
+    assert(beforeFromShare + beforeToShare == afterFromShare + afterToShare);
+    assert(afterTotalShares == beforeTotalShares);
+    assert(afterTotalSupply == beforeTotalSupply);
   }
 
   function _getRandomTokenId(uint256 input) internal view returns (uint256) {

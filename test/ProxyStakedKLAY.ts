@@ -5,7 +5,6 @@ import { CNStakedKLAYV2Mock, CnStakingV2, ProxyStakedKLAYClaimCheck } from '../t
 import { useSnapshot } from './utils/useSnapshot';
 import { useLogger } from './utils/useLogger';
 import { BigNumber, BigNumberish } from 'ethers';
-import { TransactionResponse } from '@ethersproject/providers';
 import { expectEtherBalanceOf } from './utils/balanceAssertions';
 import { Accounts } from './utils/accounts';
 import { AccountsConnectedContract } from './utils/accountsConnectedContract';
@@ -20,11 +19,11 @@ const ETHER = 10n ** 18n;
 describe('ProxyStakedKLAY', () => {
   let accounts: Accounts<AccountName>;
 
-  let cnStaking: CnStakingV2;
+  let cnStaking: AccountsConnectedContract<CnStakingV2, AccountName>;
   let cnStakedKLAY: AccountsConnectedContract<CNStakedKLAYV2Mock, AccountName>;
   let claimCheck: AccountsConnectedContract<ProxyStakedKLAYClaimCheck, AccountName>;
 
-  let issueReward: (amount: BigNumberish) => Promise<TransactionResponse>;
+  let issueReward: (amount: BigNumberish) => Promise<void>;
 
   let expectBalanceOf: StateAssertion;
   let expectSharesOf: StateAssertion;
@@ -39,7 +38,6 @@ describe('ProxyStakedKLAY', () => {
       cnStaking: _cnStaking,
       cnStakedKLAY: _cnStakedKLAY,
       claimCheck: _claimCheck,
-      misc,
     } = await setupCNStakedKLAY();
 
     accounts = _accounts;
@@ -47,11 +45,13 @@ describe('ProxyStakedKLAY', () => {
     cnStakedKLAY = _cnStakedKLAY;
     claimCheck = _claimCheck;
 
-    issueReward = (amount: BigNumberish) =>
-      misc.sendTransaction({
-        to: cnStakedKLAY.address,
-        value: amount,
-      });
+    issueReward = async (amount: BigNumberish) => {
+      const balance = await ethers.provider.getBalance(cnStakedKLAY.address);
+      await ethers.provider.send('hardhat_setBalance', [
+        cnStakedKLAY.address,
+        '0x' + balance.add(amount).toBigInt().toString(16),
+      ]);
+    };
 
     expectBalanceOf = (account: string | { address: string }) =>
       expect(cnStakedKLAY.balanceOf(typeof account === 'string' ? account : account.address))
@@ -81,6 +81,15 @@ describe('ProxyStakedKLAY', () => {
   });
 
   describe('cnStakedKLAY', () => {
+    describe('#acceptRewardAddress()', () => {
+      it('should accept reward address', async () => {
+        await cnStaking.for.cnAdmin.submitUpdateRewardAddress(cnStakedKLAY.address);
+        await expect(cnStakedKLAY.for.deployer.acceptRewardAddress())
+          .to.emit(cnStaking, 'UpdateRewardAddress')
+          .withArgs(cnStakedKLAY.address);
+      });
+    });
+
     describe('ERC20VotesCustomBalance', () => {
       describe('stake before delegate', () => {
         useSnapshot(async () => {
