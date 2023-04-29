@@ -1,11 +1,6 @@
 import { ethers } from 'hardhat';
 import { deployAccountsConnectedContract } from './accountsConnectedContract';
-import {
-  AddressBookMock,
-  CNStakedKLAYV2Mock,
-  CnStakingV2,
-  ProxyStakedKLAYClaimCheck,
-} from '../../typechain-types';
+import { CNStakedKLAYV2Mock, CnStakingV2, ProxyStakedKLAYClaimCheck } from '../../typechain-types';
 import { makeEveryoneRich } from './makeEveryoneRich';
 
 export type AccountName =
