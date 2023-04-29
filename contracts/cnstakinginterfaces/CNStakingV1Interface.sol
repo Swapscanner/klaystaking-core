@@ -68,7 +68,7 @@ abstract contract CNStakingV1Interface is CNStakingInterface {
     return address(cnStaking);
   }
 
-  function _acceptRewardAddress() internal virtual override {
+  function _acceptRewardAddress(address cnStakingAddress) internal virtual override {
     // CNStakingV1 does not mandate to accept reward address.
   }
 

@@ -20,7 +20,7 @@ abstract contract CNStakingInterface {
 
   function _cnStaking() internal view virtual returns (address);
 
-  function _acceptRewardAddress() internal virtual;
+  function _acceptRewardAddress(address cnStakingAddress) internal virtual;
 
   function _nextWithdrawalRequestId() internal virtual returns (uint256);
 
