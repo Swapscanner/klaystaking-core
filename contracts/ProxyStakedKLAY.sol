@@ -147,7 +147,7 @@ abstract contract ProxyStakedKLAY is
     super.setFee(newFeeTo, newFeeNumerator, newFeeDenominator);
   }
 
-  function acceptRewardAddress() external onlyOwner {
-    _acceptRewardAddress();
+  function acceptRewardAddress(address cnStakingAddress) external onlyOwner {
+    _acceptRewardAddress(cnStakingAddress);
   }
 }

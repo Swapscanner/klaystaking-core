@@ -10,6 +10,8 @@ import { Accounts } from './utils/accounts';
 import { AccountsConnectedContract } from './utils/accountsConnectedContract';
 import { createClaimCheck } from './utils/claimCheck';
 import { AccountName, setupCNStakedKLAY } from './utils/setupCNStakedKLAY';
+import { deployAccountsConnectedContract } from './utils/accountsConnectedContract';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 type StateAssertion = (account: string | { address: string }) => Chai.PromisedAssertion;
 
@@ -18,6 +20,7 @@ const ETHER = 10n ** 18n;
 
 describe('ProxyStakedKLAY', () => {
   let accounts: Accounts<AccountName>;
+  let misc: SignerWithAddress;
 
   let cnStaking: AccountsConnectedContract<CnStakingV2, AccountName>;
   let cnStakedKLAY: AccountsConnectedContract<CNStakedKLAYV2Mock, AccountName>;
@@ -38,12 +41,14 @@ describe('ProxyStakedKLAY', () => {
       cnStaking: _cnStaking,
       cnStakedKLAY: _cnStakedKLAY,
       claimCheck: _claimCheck,
+      misc: _misc,
     } = await setupCNStakedKLAY();
 
     accounts = _accounts;
     cnStaking = _cnStaking;
     cnStakedKLAY = _cnStakedKLAY;
     claimCheck = _claimCheck;
+    misc = _misc;
 
     issueReward = async (amount: BigNumberish) => {
       const balance = await ethers.provider.getBalance(cnStakedKLAY.address);
@@ -82,10 +87,39 @@ describe('ProxyStakedKLAY', () => {
 
   describe('cnStakedKLAY', () => {
     describe('#acceptRewardAddress()', () => {
+      let anotherCnStaking: AccountsConnectedContract<CnStakingV2, AccountName>;
+      useSnapshot(async () => {
+        // deploy another cnStaking to mimic the real world
+        anotherCnStaking = await deployAccountsConnectedContract<CnStakingV2, AccountName>({
+          accounts,
+          defaultAccount: misc,
+          contract: 'CnStakingV2',
+          args: [
+            accounts.foundationAdmin.address,
+            accounts.foundationAdmin.address,
+            accounts.foundationAdmin.address,
+            [accounts.cnAdmin.address],
+            1,
+            [Math.floor(Date.now() / 1000) + 10],
+            [1],
+          ],
+        });
+        await anotherCnStaking.for.foundationAdmin.setGCId(1);
+        await anotherCnStaking.for.foundationAdmin.reviewInitialConditions();
+        await anotherCnStaking.for.cnAdmin.reviewInitialConditions();
+        await anotherCnStaking.depositLockupStakingAndInit({ value: '1' });
+      });
+
       it('should accept reward address', async () => {
         await cnStaking.for.cnAdmin.submitUpdateRewardAddress(cnStakedKLAY.address);
-        await expect(cnStakedKLAY.for.deployer.acceptRewardAddress())
+        await anotherCnStaking.for.cnAdmin.submitUpdateRewardAddress(cnStakedKLAY.address);
+
+        await expect(cnStakedKLAY.for.deployer.acceptRewardAddress(cnStaking.address))
           .to.emit(cnStaking, 'UpdateRewardAddress')
+          .withArgs(cnStakedKLAY.address);
+
+        await expect(cnStakedKLAY.for.deployer.acceptRewardAddress(anotherCnStaking.address))
+          .to.emit(anotherCnStaking, 'UpdateRewardAddress')
           .withArgs(cnStakedKLAY.address);
       });
     });

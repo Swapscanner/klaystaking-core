@@ -20,8 +20,8 @@ abstract contract CNStakingV2Interface is CNStakingV1Interface {
     return CnStakingV2(payable(address(cnStaking))).STAKE_LOCKUP();
   }
 
-  function _acceptRewardAddress() internal virtual override {
-    CnStakingV2(payable(address(cnStaking))).acceptRewardAddress(address(this));
+  function _acceptRewardAddress(address cnStakingAddress) internal virtual override {
+    CnStakingV2(payable(cnStakingAddress)).acceptRewardAddress(address(this));
   }
 
   // we do not have to track unstaking amount since CnStakingV2 does it for us.
